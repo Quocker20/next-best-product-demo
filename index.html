@@ -999,7 +999,6 @@ input:focus, select:focus {
           <button data-mode="cold" title="User chưa có lịch sử trước tập test">Khách mới</button>
           <button data-mode="miss" title="User mà mô hình xếp lệch hoặc sai hoàn toàn">Dự đoán sai</button>
         </div>
-        <div class="hint-text" id="sampleInfo" style="margin-top:10px;"></div>
       </div>
     </div>
 
@@ -1056,9 +1055,6 @@ input:focus, select:focus {
           <div class="form-grid" id="advFeaturesGrid" style="margin-top:10px;"></div>
         </details>
 
-        <div class="hint-text" style="margin-top:10px;">
-          Thay đổi bất kỳ trường nào để xem mô hình cập nhật kết quả.
-        </div>
         <div class="error-msg" id="globalErrorMsg"></div>
       </div>
     </div>
@@ -1261,9 +1257,6 @@ input:focus, select:focus {
       <button class="modal-close-btn" data-close="modalQueryEmbedding">&times;</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:0.85rem;color:var(--muted);margin-top:0;">
-        Query embedding là vị trí bổ sung ở cuối chuỗi lịch sử trong SMLP4Rec. Nó được tạo thành từ vector mask học được cộng với tổng embedding của 14 trường đặc trưng tìm kiếm dưới đây:
-      </p>
       <table class="detail-table">
         <thead>
           <tr>
@@ -1560,8 +1553,6 @@ function buildUserSelect() {
   $('selectUser').innerHTML = META.users.map(u =>
     `<option value="${u.user_id}">${u.user_id} · ${TAG_TEXT[u.tag]} · NDCG@10 ${u.ndcg10.toFixed(2)}</option>`).join('');
   $('selectUser').onchange = () => { $('inputUserId').value = $('selectUser').value; loadUserData(); };
-  const i = META.info, p = i.population;
-  $('sampleInfo').textContent = `Mẫu chọn lọc, KHÔNG đại diện: nghiêng về user mô hình xếp tốt (NDCG@10 trung bình mẫu ${i['sample_ndcg@10']} so với ${p['ndcg@10_all']} trên toàn bộ ${p.test_users.toLocaleString('en-US')} user test), có cả khách mới và user đoán sai.`;
 }
 
 async function pickRandomSample() {
