@@ -1055,6 +1055,7 @@ input:focus, select:focus {
           <div class="form-grid" id="advFeaturesGrid" style="margin-top:10px;"></div>
         </details>
 
+        <button class="btn btn-accent btn-lg btn-block" id="btnPredict" style="margin-top:14px;">Dự đoán</button>
         <div class="error-msg" id="globalErrorMsg"></div>
       </div>
     </div>
@@ -1445,7 +1446,7 @@ function buildForm() {
 
   for (const f of META.fields) {
     const el = $('f_' + f.name);
-    if (el) el.addEventListener('input', scheduleRecommend);
+    if (el) el.addEventListener('input', markDirty);
   }
 }
 
@@ -1465,9 +1466,10 @@ function setFormFields(values) {
   }
 }
 
-function scheduleRecommend() {
-  clearTimeout(STATE.debounceTimer);
-  STATE.debounceTimer = setTimeout(runRecommend, 280);
+// editing a field only marks the result as stale; the model runs when the user presses "Dự đoán"
+function markDirty() {
+  $('btnPredict').textContent = 'Dự đoán lại với thay đổi';
+  $('outputArea').style.opacity = '0.55';
 }
 
 // --- RECOMMENDATION INVOCATION ---
@@ -1487,6 +1489,8 @@ async function runRecommend() {
     $('globalErrorMsg').textContent = '';
     STATE.currentData = res;
     renderAll(res);
+    $('btnPredict').textContent = 'Dự đoán';
+    $('outputArea').style.opacity = '';
   } catch (err) {
     if (requestId === STATE.isBusy) {
       $('globalErrorMsg').textContent = err.message;
@@ -2190,6 +2194,8 @@ async function initApp() {
       pickRandomSample();
     };
   });
+
+  $('btnPredict').onclick = runRecommend;
 
   // Buttons in view
   $('btnOpen100Modal').onclick = openAll100Modal;
