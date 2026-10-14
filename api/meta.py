@@ -1,4 +1,4 @@
-"""Vercel serverless entry: every /api/* request is rewritten here (see vercel.json)."""
+"""Vercel serverless entry of /api/meta."""
 
 import sys
 from pathlib import Path
@@ -9,4 +9,4 @@ from server import Handler  # noqa: E402
 
 
 class handler(Handler):  # Vercel looks for a BaseHTTPRequestHandler subclass named `handler`
-    pass
+    ROUTE = "meta"

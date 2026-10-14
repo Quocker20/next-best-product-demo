@@ -56,4 +56,4 @@ Render / Railway / Fly: build with `pip install -r requirements.txt`, start with
 ## Vercel
 
 Runtime is numpy only (`checkpoints/weights.npz`, exported by `tools/export_weights.py`), so the bundle is a few tens of MB.
-`index.html` is served statically, `/api/*` is rewritten to `api/index.py` (`vercel.json`). No build command, framework preset "Other".
+`index.html` is served statically, `/api/meta`, `/api/user`, `/api/recommend` are one function each in `api/` (`vercel.json` bundles `checkpoints/` and `data/`). No build command, framework preset "Other".

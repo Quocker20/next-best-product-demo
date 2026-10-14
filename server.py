@@ -27,7 +27,7 @@ _ENGINE: Engine | None = None
 
 
 def engine() -> Engine:
-    """Loaded on first use (also by the serverless entry `api/index.py`)."""
+    """Loaded on first use (also by the serverless entries in `api/`)."""
     global _ENGINE
     if _ENGINE is None:
         _ENGINE = Engine()
@@ -35,6 +35,14 @@ def engine() -> Engine:
 
 
 class Handler(BaseHTTPRequestHandler):
+    ROUTE: str | None = None  # set by the serverless entries in api/ (one file per endpoint)
+
+    def _route(self) -> str:
+        if self.ROUTE:
+            return self.ROUTE
+        path = self.path.split("?")[0]
+        return path[path.index("/api/") + 5:] if "/api/" in path else path
+
     def _send(self, code: int, body: bytes, ctype: str) -> None:
         self.send_response(code)
         self.send_header("Content-Type", ctype)
@@ -43,8 +51,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802
-        path = self.path.split("?")[0]
-        if path.endswith("/api/meta"):
+        path = self._route()
+        if path == "meta":
             self._send(200, json.dumps(engine().meta_json()).encode(), "application/json")
         elif path == "/healthz":
             self._send(200, b"ok", "text/plain")
@@ -56,8 +64,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         try:
             req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-            path = self.path.split("?")[0]
-            fn = {"/api/user": engine().api_user, "/api/recommend": engine().api_recommend}[path[path.index("/api/"):]]
+            fn = {"user": engine().api_user, "recommend": engine().api_recommend}[self._route()]
             with LOCK:
                 out = fn(req)
         except Exception as e:  # shown in the page
