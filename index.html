@@ -1,0 +1,2236 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Gợi Ý Hạng Phòng Kế Tiếp (Next-Best Product Recommendation)</title>
+<style>
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-alt: #f9fafb;
+  --ink: #1f2937;
+  --ink-secondary: #4b5563;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --line2: #d1d5db;
+  
+  --primary: #3b6ea5;
+  --primary-dark: #2f5a88;
+  --primary-light: #ebf3fb;
+  --primary-border: #bfdbfe;
+  
+  --accent: #d9a441;
+  --accent-light: #fef7ea;
+  
+  --hit: #15803d;
+  --hit-bg: #dcfce7;
+  --hit-border: #86efac;
+  --hit-text: #166534;
+  
+  --miss: #c2410c;
+  --miss-bg: #ffedd5;
+  --miss-border: #fed7aa;
+  --miss-text: #9a3412;
+  
+  --radius: 0px;
+  --radius-sm: 0px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  
+  --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 15px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; color: inherit; }
+
+/* Header */
+header {
+  background: linear-gradient(135deg, #1e293b 0%, #2f5a88 100%);
+  color: #ffffff;
+  border-bottom: 3px solid var(--accent);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+header .wrap {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-title h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-title p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+.header-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.h-badge {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 0.74rem;
+  color: #f1f5f9;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Layout */
+.app-container {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .app-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-alt);
+}
+.card-header h2, .card-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-body {
+  padding: 16px 18px;
+}
+
+/* Sidebar: Input Control Panel */
+aside.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Forms & Controls */
+label.field-label {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+input[type=text], input[type=number], select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  outline: none;
+  font-size: 0.88rem;
+  color: var(--ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 110, 165, 0.18);
+}
+.btn {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: var(--primary);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.btn:hover {
+  background: var(--primary-dark);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn-accent {
+  background: #e69d24;
+  color: #fff;
+}
+.btn-accent:hover {
+  background: #ca8417;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line2);
+}
+.btn-outline:hover {
+  background: var(--surface-alt);
+  border-color: var(--primary);
+}
+.btn-block {
+  width: 100%;
+}
+.btn-lg {
+  padding: 11px 16px;
+  font-size: 0.95rem;
+}
+
+/* Segmented button */
+.segment-group {
+  display: flex;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin: 10px 0;
+  background: #ffffff;
+}
+.segment-group button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  border-right: 1px solid var(--line);
+  color: var(--ink-secondary);
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.segment-group button:last-child { border-right: none; }
+.segment-group button.active {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.form-grid .full-span {
+  grid-column: 1 / -1;
+}
+
+.custom-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  margin-top: 8px;
+  user-select: none;
+}
+.custom-checkbox input {
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.hint-text {
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.error-msg {
+  color: var(--miss);
+  font-size: 0.82rem;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+/* Cluster Chip */
+.cluster-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.cluster-chip.lg {
+  font-size: 1.15rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+.cluster-chip.sm {
+  font-size: 0.72rem;
+  padding: 2px 5px;
+}
+
+/* Main Content Area */
+.content-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* Verdict Banner */
+.verdict-card {
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 24px;
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .verdict-card {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+.verdict-card.hit {
+  background: linear-gradient(to right, #f0fdf4, #ffffff);
+  border-color: var(--hit-border);
+}
+.verdict-card.miss {
+  background: linear-gradient(to right, #fff7ed, #ffffff);
+  border-color: var(--miss-border);
+}
+.verdict-target {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.verdict-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--muted);
+}
+.verdict-cluster-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.verdict-badge.hit {
+  background: var(--hit-bg);
+  color: var(--hit-text);
+  border: 1px solid var(--hit-border);
+}
+.verdict-badge.miss {
+  background: var(--miss-bg);
+  color: var(--miss-text);
+  border: 1px solid var(--miss-border);
+}
+.verdict-rank-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.rank-track-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 48px;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.78rem;
+}
+.rank-track-label {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-track {
+  position: relative;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: visible;
+}
+.rank-track-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5%;
+  background: #86efac;
+  border-radius: 999px 0 0 999px;
+}
+.rank-track-pin {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.rank-track-val {
+  font-weight: 700;
+  text-align: right;
+  font-family: var(--mono);
+}
+
+/* Architecture View Container */
+.arch-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.arch-header {
+  padding: 12px 18px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.arch-header .title-group h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.arch-header .title-group p {
+  margin: 2px 0 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.arch-legend-strip {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.75rem;
+}
+.arch-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.arch-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.arch-svg-container {
+  width: 100%;
+  overflow-x: auto;
+  background: #ffffff;
+  padding: 16px 10px;
+  display: flex;
+  justify-content: center;
+}
+.arch-svg-container svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Interactive SVG nodes */
+.svg-interactive {
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.svg-interactive:hover {
+  filter: drop-shadow(0 2px 6px rgba(59, 110, 165, 0.3));
+}
+.svg-interactive:hover rect {
+  stroke-width: 2px;
+}
+.svg-pulse {
+  animation: svgPulse 2s infinite ease-in-out;
+}
+@keyframes svgPulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; filter: drop-shadow(0 0 6px rgba(59, 110, 165, 0.5)); }
+}
+
+/* Top 5 Cards Container below or inside Architecture */
+.top5-detail-section {
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+  background: #fafbfc;
+}
+.top5-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.top5-detail-header h3 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.top5-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1200px) {
+  .top5-cards-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 700px) {
+  .top5-cards-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .top5-cards-grid { grid-template-columns: 1fr; }
+}
+
+.rec-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+.rec-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+.rec-card.hit {
+  border: 2px solid var(--hit);
+  background: #f0fdf4;
+}
+.rec-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.rec-rank-tag {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.rec-card.hit .rec-rank-tag {
+  color: var(--hit);
+}
+.rec-score-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-family: var(--mono);
+  color: var(--ink);
+}
+.rec-card.hit .rec-score-val {
+  color: var(--hit-text);
+}
+.rec-card-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rec-cluster-title {
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+.rec-hit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--hit-text);
+  background: var(--hit-bg);
+  border: 1px solid var(--hit-border);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+/* Truth Summary Bar */
+.truth-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+}
+.truth-summary-bar.miss {
+  background: #fff7ed;
+  border-color: var(--miss-border);
+  color: var(--miss-text);
+}
+.truth-summary-bar.hit {
+  background: #f0fdf4;
+  border-color: var(--hit-border);
+  color: var(--hit-text);
+}
+
+/* Baselines Comparison View */
+.baselines-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+@media (max-width: 800px) {
+  .baselines-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.baseline-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.baseline-card-header {
+  padding: 12px 16px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--line);
+}
+.baseline-card-header h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.baseline-desc {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.baseline-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.baseline-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--line);
+}
+.baseline-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+.baseline-table tr:last-child td {
+  border-bottom: none;
+}
+.baseline-table tr.hit-row {
+  background: var(--hit-bg);
+}
+.baseline-table tr.hit-row td {
+  font-weight: 600;
+  color: var(--hit-text);
+}
+.baseline-footer {
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Modals */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(3px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.modal-backdrop.open {
+  display: flex;
+}
+.modal-box {
+  background: #ffffff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 840px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+}
+.modal-close-btn:hover {
+  background: #e2e8f0;
+  color: var(--ink);
+}
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Data Table in Modals */
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.detail-table th {
+  background: #f1f5f9;
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line2);
+  font-weight: 700;
+  color: var(--ink-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.detail-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.detail-table tr:hover {
+  background: #f8fafc;
+}
+.detail-table tr.highlight-row {
+  background: #fef9c3;
+  font-weight: 600;
+}
+.detail-table tr.same-dest-row {
+  background: #eff6ff;
+}
+
+/* 100 ranking grid / search */
+.ranking-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ranking-toolbar input {
+  max-width: 260px;
+}
+
+/* Loading Overlay */
+.loading-layer {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  font-weight: 600;
+  color: var(--primary);
+}
+.is-loading .loading-layer {
+  display: flex;
+}
+
+/* Inspector Modal Styles */
+.inspect-role-card {
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 0.86rem;
+}
+.inspect-formula {
+  background: #1e293b;
+  color: #38bdf8;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  margin: 6px 0 0;
+  display: inline-block;
+  font-weight: 600;
+}
+.inspect-tensor-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.inspect-tensor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+.inspect-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.inspect-stat-box {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 10px;
+  text-align: center;
+}
+.inspect-stat-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.inspect-stat-val {
+  font-size: 0.95rem;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 2px;
+}
+.inspect-bars-container {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  gap: 3px;
+  background: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  margin-bottom: 10px;
+  overflow-x: auto;
+}
+.inspect-bar-col {
+  flex: 1;
+  min-width: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+.inspect-sample-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+.inspect-sample-chip {
+  background: #f1f5f9;
+  border: 1px solid var(--line2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: #334155;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand-title">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#d9a441" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <div>
+        <h1>Next-Best Product Recommendation</h1>
+        <p>Gợi ý cụm khách sạn tiếp theo cho đặt phòng nghỉ dưỡng &middot; SMLP4Rec + Query Embedding + sameDest &middot; demo offline trên dữ liệu Expedia công khai</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="app-container" id="mainContainer">
+  <!-- KHỐI 0: ĐIỀU KHIỂN INPUT & MẪU THỬ NGHIỆM -->
+  <aside class="sidebar" id="inputControlPanel">
+    
+    <!-- Lấy mẫu từ tập test (Random Sample Button) -->
+    <div class="card">
+      <div class="card-header">
+        <h3>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+            <circle cx="8.5" cy="8.5" r="1.3" fill="currentColor"/>
+            <circle cx="15.5" cy="15.5" r="1.3" fill="currentColor"/>
+            <circle cx="15.5" cy="8.5" r="1.3" fill="currentColor"/>
+            <circle cx="8.5" cy="15.5" r="1.3" fill="currentColor"/>
+          </svg>
+          Mẫu user (tập test)
+        </h3>
+      </div>
+      <div class="card-body">
+        <button class="btn btn-accent btn-lg btn-block" id="btnRandomSample" title="Chọn ngẫu nhiên một user trong mẫu theo bộ lọc bên dưới">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Chọn ngẫu nhiên user
+        </button>
+
+        <div class="segment-group" id="sampleModeGroup">
+          <button data-mode="any" class="active" title="Mọi user trong mẫu">Tất cả</button>
+          <button data-mode="good" title="User mà mô hình xếp đúng (NDCG@10 >= 0.5)">Dự đoán đúng</button>
+          <button data-mode="cold" title="User chưa có lịch sử trước tập test">Khách mới</button>
+          <button data-mode="miss" title="User mà mô hình xếp lệch hoặc sai hoàn toàn">Dự đoán sai</button>
+        </div>
+        <div class="hint-text" id="sampleInfo" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <!-- User ID Handler -->
+    <div class="card">
+      <div class="card-header">
+        <h3>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          Người dùng &amp; Lịch sử
+        </h3>
+      </div>
+      <div class="card-body">
+        <label class="field-label" for="selectUser">User trong mẫu</label>
+        <select id="selectUser" style="margin-bottom:8px;"></select>
+        <label class="field-label" for="inputUserId">User ID (để trống = khách ẩn danh, không lịch sử)</label>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="inputUserId" inputmode="numeric" placeholder="chọn ở trên hoặc để trống">
+          <button class="btn" id="btnLoadUser" style="flex:0 0 auto;">Tải user</button>
+        </div>
+
+        <div id="userTestBookingWrap" style="display:none;margin-top:10px;">
+          <label class="field-label" for="selectTestBooking">Chọn booking trong tập test của user</label>
+          <select id="selectTestBooking"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 14 Query Features Form -->
+    <div class="card">
+      <div class="card-header">
+        <h3>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          14 Trường thông tin tìm kiếm
+        </h3>
+      </div>
+      <div class="card-body">
+        <!-- Chuyến đi chính -->
+        <div style="font-size:0.76rem;font-weight:700;color:var(--primary);text-transform:uppercase;margin-bottom:8px;">
+          Thông tin chuyến đi chính
+        </div>
+        <div class="form-grid" id="mainFeaturesGrid"></div>
+
+        <!-- Mở rộng -->
+        <details style="margin-top:14px;">
+          <summary style="cursor:pointer;font-size:0.8rem;font-weight:600;color:var(--primary);">
+            Ngữ cảnh &amp; Kênh bán hàng (6 trường)
+          </summary>
+          <div class="form-grid" id="advFeaturesGrid" style="margin-top:10px;"></div>
+        </details>
+
+        <div class="hint-text" style="margin-top:10px;">
+          Thay đổi bất kỳ trường nào để xem mô hình cập nhật kết quả.
+        </div>
+        <div class="error-msg" id="globalErrorMsg"></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- PHẦN CHÍNH: KẾT QUẢ, KIẾN TRÚC MÔ HÌNH CHÍNH & ĐỐI CHIẾU BASELINE -->
+  <section class="content-stack" id="outputArea">
+    
+    <!-- BANNER KẾT QUẢ ĐỐI CHIẾU TỔNG QUAN -->
+    <div class="verdict-card hit" id="verdictBanner">
+      <div class="verdict-target">
+        <div class="verdict-label">Cluster khách thực tế đã chọn</div>
+        <div class="verdict-cluster-row">
+          <span id="actualClusterChipWrap"></span>
+          <span class="verdict-badge hit" id="verdictHitBadge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Trong Top 5
+          </span>
+        </div>
+      </div>
+
+      <div class="verdict-rank-bars">
+        <div class="rank-track-row">
+          <span class="rank-track-label" style="color:var(--primary-dark)">Mô hình chính:</span>
+          <div class="rank-track">
+            <div class="rank-track-zone"></div>
+            <i class="rank-track-pin" id="pinMain" style="left:5%;background:var(--primary)"></i>
+          </div>
+          <span class="rank-track-val" id="valMain">#1</span>
+        </div>
+
+        <div class="rank-track-row">
+          <span class="rank-track-label" style="color:#d9a441">Popularity:</span>
+          <div class="rank-track">
+            <div class="rank-track-zone"></div>
+            <i class="rank-track-pin" id="pinPop" style="left:12%;background:#d9a441"></i>
+          </div>
+          <span class="rank-track-val" id="valPop">#3</span>
+        </div>
+
+        <div class="rank-track-row">
+          <span class="rank-track-label" style="color:#9333ea">ItemKNN:</span>
+          <div class="rank-track">
+            <div class="rank-track-zone"></div>
+            <i class="rank-track-pin" id="pinKnn" style="left:40%;background:#9333ea"></i>
+          </div>
+          <span class="rank-track-val" id="valKnn">#18</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DANH SÁCH TOP-20 CỦA USER (giao thức user-level) -->
+    <div class="card" id="userListCard" style="display:none;">
+      <div class="card-header"><h3>Danh sách Top-20 cố định của user (giao thức đánh giá user-level)</h3></div>
+      <div class="card-body">
+        <div class="hint-text" id="userListMeta" style="margin-bottom:8px;"></div>
+        <div id="userListChips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+    </div>
+
+    <!-- KHỐI 1: MÔ HÌNH CHÍNH (MAIN MODEL VIEW) -->
+    <div class="arch-card" id="mainModelView">
+      <div class="arch-header">
+        <div class="title-group">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            SMLP4Rec + Query Embedding + sameDest (Kiến trúc Stage 3)
+          </h2>
+        </div>
+      </div>
+
+      <!-- Sơ đồ kiến trúc SVG tách rời theo chuẩn architecture_stage3.svg -->
+      <div class="arch-svg-container" id="archSvgWrap">
+        <!-- SVG được render động từ renderArchitectureSvg() -->
+        <svg id="archSvg" viewBox="0 0 1152 440" width="1152" height="440" style="font-family:'Segoe UI', Arial, sans-serif;"></svg>
+      </div>
+
+      <!-- Khối Output / Công thức & Ranking (Top 5 chi tiết) -->
+      <div class="top5-detail-section" id="outputRankingBlock">
+        <div class="top5-detail-header">
+          <h3>Top 5 Gợi ý</h3>
+          <button class="btn btn-outline" id="btnOpen100Modal" style="padding:4px 10px;font-size:0.78rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+            Xem đầy đủ 100 Cluster
+          </button>
+        </div>
+
+        <div class="top5-cards-grid" id="top5CardsGrid"></div>
+        <div id="truthMissAlert" style="margin-top:10px;display:none;"></div>
+      </div>
+    </div>
+
+    <!-- KHỐI 2: KẾT QUẢ ĐỐI CHIẾU VỚI 2 MÔ HÌNH BASELINE -->
+    <div class="card" id="baselineComparisonView">
+      <div class="card-header">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          Đối chiếu Baseline (ItemKNN &amp; Popularity toàn cục)
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="baselines-grid">
+          
+          <!-- Baseline 1: ItemKNN -->
+          <div class="baseline-card" id="cardItemKnn">
+            <div class="baseline-card-header">
+              <h3>
+                ItemKNN
+                <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">History-only</span>
+              </h3>
+            </div>
+            <table class="baseline-table">
+              <thead>
+                <tr>
+                  <th style="width:50px;">Thứ hạng</th>
+                  <th>Cụm dự đoán (Cluster)</th>
+                  <th style="text-align:right;">Kết quả</th>
+                </tr>
+              </thead>
+              <tbody id="knnTop5Tbody"></tbody>
+            </table>
+            <div class="baseline-footer" id="knnFooter"></div>
+          </div>
+
+          <!-- Baseline 2: Popularity toàn cục -->
+          <div class="baseline-card" id="cardPopularity">
+            <div class="baseline-card-header">
+              <h3>
+                Popularity toàn cục
+                <span class="cluster-chip sm" style="background:#fef3c7;color:#92400e;">Không cá nhân hóa</span>
+              </h3>
+            </div>
+            <table class="baseline-table">
+              <thead>
+                <tr>
+                  <th style="width:50px;">Thứ hạng</th>
+                  <th>Cụm dự đoán (Cluster)</th>
+                  <th style="text-align:right;">Kết quả</th>
+                </tr>
+              </thead>
+              <tbody id="popTop5Tbody"></tbody>
+            </table>
+            <div class="baseline-footer" id="popFooter"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<!-- MODAL 1: CHI TIẾT TOÀN BỘ CHUỖI LƯỢT TƯƠNG TÁC (HISTORY MODAL) -->
+<div class="modal-backdrop" id="modalHistory">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        Chi tiết chuỗi lịch sử tương tác của người dùng
+      </h3>
+      <button class="modal-close-btn" data-close="modalHistory">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:0.85rem;margin-bottom:12px;color:var(--ink-secondary);" id="modalHistoryMeta"></div>
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th style="width:70px;">Thứ tự</th>
+            <th>Mã sự kiện (Event)</th>
+            <th>Cụm phòng (Cluster)</th>
+            <th>Điểm đến (Destination ID)</th>
+            <th>Ghi chú sameDest</th>
+          </tr>
+        </thead>
+        <tbody id="modalHistoryTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 2: CHI TIẾT 14 TRƯỜNG QUERY EMBEDDING (QUERY FEATURES MODAL) -->
+<div class="modal-backdrop" id="modalQueryEmbedding">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        Query Embedding &middot; Chi tiết 14 trường feature được nhúng (Embedding)
+      </h3>
+      <button class="modal-close-btn" data-close="modalQueryEmbedding">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--muted);margin-top:0;">
+        Query embedding là vị trí bổ sung ở cuối chuỗi lịch sử trong SMLP4Rec. Nó được tạo thành từ vector mask học được cộng với tổng embedding của 14 trường đặc trưng tìm kiếm dưới đây:
+      </p>
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th>Tên trường</th>
+            <th>Ý nghĩa</th>
+            <th>Mã / Giá trị hiện tại</th>
+            <th>Diễn giải giá trị</th>
+            <th>Trạng thái từ vựng</th>
+          </tr>
+        </thead>
+        <tbody id="modalQueryTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: BẢNG XẾP HẠNG TOÀN BỘ 100 CLUSTER (ALL 100 CLUSTERS RANKING) -->
+<div class="modal-backdrop" id="modalAll100">
+  <div class="modal-box" style="max-width:960px;">
+    <div class="modal-header">
+      <h3>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        Bảng xếp hạng đầy đủ cả 100 Cluster
+      </h3>
+      <button class="modal-close-btn" data-close="modalAll100">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="ranking-toolbar">
+        <input type="text" id="filterClusterInput" placeholder="Tìm kiếm cụm (vd: 48)...">
+        <div class="segment-group" style="margin:0;">
+          <button data-filter="all" class="active" id="btnFilterAll">Tất cả (100)</button>
+          <button data-filter="top5" id="btnFilterTop5">Chỉ Top 5</button>
+          <button data-filter="truth" id="btnFilterTruth">Cụm thực tế</button>
+        </div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-left:auto;" id="rankingFilterCount">100 cụm</div>
+      </div>
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th style="width:65px;">Thứ hạng</th>
+            <th>Cụm (Cluster)</th>
+            <th style="text-align:right;">Điểm kết hợp (Score)</th>
+            <th style="text-align:right;">Xác suất SMLP4Rec (model_p)</th>
+            <th style="text-align:right;">Tỷ trọng sameDest</th>
+            <th style="text-align:center;">Hạng tại Popularity</th>
+            <th style="text-align:center;">Hạng tại ItemKNN</th>
+          </tr>
+        </thead>
+        <tbody id="modalAll100Tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 4: SOI CHIẾU NỘI QUAN TẦNG MẠNG (MODEL LAYER INSPECTOR) -->
+<div class="modal-backdrop" id="modalInspector">
+  <div class="modal-box" style="max-width:860px;">
+    <div class="modal-header">
+      <h3 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 16v-4"></path>
+          <path d="M12 8h.01"></path>
+        </svg>
+        <span id="inspectModalTitle">Soi chiếu tầng mạng</span>
+        <span class="cluster-chip sm" id="inspectModalBadge" style="background:var(--primary-light);color:var(--primary-dark);font-family:var(--mono);"></span>
+      </h3>
+      <button class="modal-close-btn" data-close="modalInspector">&times;</button>
+    </div>
+    <div class="modal-body" id="inspectModalBody"></div>
+  </div>
+</div>
+
+<script>
+// --- GLOBAL STATE & UTILITIES ---
+const $ = id => document.getElementById(id);
+const hue = c => (c * 137.508) % 360;
+const chip = (c, extra='') => `<span class="cluster-chip ${extra}" style="background:hsl(${hue(c)} 65% 88%);color:hsl(${hue(c)} 60% 20%);border-color:hsl(${hue(c)} 50% 75%)">${c}</span>`;
+const fmtPct = x => (x * 100).toFixed(2) + '%';
+const fmtScore = x => (x * 100).toFixed(1) + '%';
+
+const LABEL = {
+  dest: 'Điểm đến (Destination ID)',
+  dest_type: 'Loại điểm đến',
+  ci_month: 'Tháng check-in',
+  lead: 'Thời gian đặt trước',
+  stay: 'Số đêm lưu trú',
+  adults: 'Số người lớn',
+  children: 'Số trẻ em',
+  rooms: 'Số phòng',
+  package: 'Gói combo (is_package)',
+  mobile: 'Thiết bị di động',
+  channel: 'Kênh tiếp thị',
+  site: 'Expedia Site ID',
+  posa: 'Châu lục điểm bán (POSA)',
+  country: 'Quốc gia người dùng'
+};
+
+const FIELD_DESC = {
+  dest: 'Mã số điểm đến do Expedia định danh (srch_destination_id)',
+  dest_type: 'Phân loại điểm đến (thành phố, resort, v.v.)',
+  ci_month: 'Tháng bắt đầu nhận phòng (1-12)',
+  lead: 'Khoảng cách từ ngày đặt tới ngày nhận phòng',
+  stay: 'Tổng số đêm nghỉ dưỡng dự kiến',
+  adults: 'Số lượng khách người lớn trong đoàn',
+  children: 'Số lượng trẻ em đi cùng',
+  rooms: 'Số phòng lưu trú cần đặt',
+  package: 'Đặt kèm combo dịch vụ (vé, xe, tour)',
+  mobile: 'Đặt phòng qua thiết bị di động',
+  channel: 'Kênh nguồn giới thiệu khách hàng',
+  site: 'Thị trường website Expedia phục vụ',
+  posa: 'Châu lục của điểm bán hàng (POSA continent)',
+  country: 'Quốc gia nơi người dùng sinh sống'
+};
+
+const MAIN_FIELDS = ['dest', 'ci_month', 'lead', 'stay', 'adults', 'children', 'rooms', 'package'];
+const ADV_FIELDS = ['dest_type', 'mobile', 'channel', 'site', 'posa', 'country'];
+
+let META = null;
+let STATE = {
+  index: '',
+  truth: '',
+  mode: 'any',
+  currentData: null,
+  autoTimer: null,
+  debounceTimer: null,
+  isBusy: 0
+};
+
+// --- API CLIENT ---
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+// --- FORM BUILDER ---
+function buildForm() {
+  const createFieldHtml = f => {
+    const lab = LABEL[f.name] || f.name;
+    let inputHtml;
+    if (f.options) {
+      let opts = f.options;
+      if (f.name === 'package' || f.name === 'mobile') {
+        opts = opts.map(o => [o[0], o[0] === 0 ? 'Không (0)' : o[0] === 1 ? 'Có (1)' : o[1]]);
+      }
+      inputHtml = `<select id="f_${f.name}">
+        ${opts.map(o => `<option value="${o[0]}">${String(o[1]).replace(/^\d+: /, '')}</option>`).join('')}
+      </select>`;
+    } else {
+      inputHtml = `<input type="number" id="f_${f.name}" value="0" list="dl_${f.name}" title="${f.hint || ''}">
+      <datalist id="dl_${f.name}">
+        ${(f.datalist || []).map(x => `<option value="${x}">`).join('')}
+      </datalist>`;
+    }
+    const isFull = (f.name === 'dest' || f.name === 'country');
+    return `<div class="${isFull ? 'full-span' : ''}">
+      <label class="field-label" for="f_${f.name}">${lab}</label>
+      ${inputHtml}
+    </div>`;
+  };
+
+  $('mainFeaturesGrid').innerHTML = MAIN_FIELDS.map(name => {
+    const field = META.fields.find(f => f.name === name);
+    return field ? createFieldHtml(field) : '';
+  }).join('');
+
+  $('advFeaturesGrid').innerHTML = ADV_FIELDS.map(name => {
+    const field = META.fields.find(f => f.name === name);
+    return field ? createFieldHtml(field) : '';
+  }).join('');
+
+  for (const f of META.fields) {
+    const el = $('f_' + f.name);
+    if (el) el.addEventListener('input', scheduleRecommend);
+  }
+}
+
+function getFormFields() {
+  const fields = {};
+  for (const f of META.fields) {
+    const el = $('f_' + f.name);
+    fields[f.name] = el ? parseInt(el.value, 10) || 0 : 0;
+  }
+  return fields;
+}
+
+function setFormFields(values) {
+  for (const k in values) {
+    const el = $('f_' + k);
+    if (el) el.value = values[k];
+  }
+}
+
+function scheduleRecommend() {
+  clearTimeout(STATE.debounceTimer);
+  STATE.debounceTimer = setTimeout(runRecommend, 280);
+}
+
+// --- RECOMMENDATION INVOCATION ---
+async function runRecommend() {
+  const requestId = ++STATE.isBusy;
+  $('mainContainer').classList.add('is-loading');
+  try {
+    const uid = $('inputUserId').value.trim();
+    const payload = {
+      user_id: uid,
+      index: uid ? STATE.index : '',
+      truth: STATE.truth,
+      fields: getFormFields()
+    };
+    const res = await api('/api/recommend', payload);
+    if (requestId !== STATE.isBusy) return;
+    $('globalErrorMsg').textContent = '';
+    STATE.currentData = res;
+    renderAll(res);
+  } catch (err) {
+    if (requestId === STATE.isBusy) {
+      $('globalErrorMsg').textContent = err.message;
+    }
+  } finally {
+    if (requestId === STATE.isBusy) {
+      $('mainContainer').classList.remove('is-loading');
+    }
+  }
+}
+
+// --- USER & RANDOM SAMPLE ACTIONS ---
+async function loadUserData() {
+  $('globalErrorMsg').textContent = '';
+  const uid = $('inputUserId').value.trim();
+  if (!uid) {
+    STATE.index = '';
+    STATE.truth = '';
+    $('userTestBookingWrap').style.display = 'none';
+    $('userListCard').style.display = 'none';
+    await runRecommend();
+    return;
+  }
+  try {
+    const res = await api('/api/user', { user_id: uid });
+    renderUserList(res);
+    $('selectUser').value = String(res.user_id);
+    if (res.n_test === 0) {
+      STATE.index = '';
+      STATE.truth = '';
+      $('userTestBookingWrap').style.display = 'none';
+      await runRecommend();
+      return;
+    }
+    const select = $('selectTestBooking');
+    select.innerHTML = res.tests.map((t, idx) => 
+      `<option value="${idx}">Test Booking #${idx + 1} &middot; Cluster thật ${t.truth} &middot; ${t.n_prior} booking trước</option>`
+    ).join('');
+    select.onchange = () => applyTestBooking(res.tests[select.value], res.user_id);
+    $('userTestBookingWrap').style.display = 'block';
+    await applyTestBooking(res.tests[0], res.user_id);
+  } catch (err) {
+    $('globalErrorMsg').textContent = err.message;
+  }
+}
+
+async function applyTestBooking(testItem, userId) {
+  STATE.index = testItem.index;
+  STATE.truth = testItem.truth;
+  setFormFields(testItem.fields);
+  $('inputUserId').value = userId;
+  await runRecommend();
+}
+
+const TAG_TEXT = {
+  warm_good: 'Có lịch sử · đoán đúng', warm_partial: 'Có lịch sử · đoán lệch', warm_wrong: 'Có lịch sử · đoán sai',
+  cold_good: 'Khách mới · đoán đúng', cold_wrong: 'Khách mới · đoán sai'
+};
+
+function inMode(u, mode) {
+  if (mode === 'good') return u.tag.endsWith('_good');
+  if (mode === 'miss') return u.tag.endsWith('_wrong') || u.tag.endsWith('_partial');
+  if (mode === 'cold') return u.cold;
+  return true;
+}
+
+function buildUserSelect() {
+  $('selectUser').innerHTML = META.users.map(u =>
+    `<option value="${u.user_id}">${u.user_id} · ${TAG_TEXT[u.tag]} · NDCG@10 ${u.ndcg10.toFixed(2)}</option>`).join('');
+  $('selectUser').onchange = () => { $('inputUserId').value = $('selectUser').value; loadUserData(); };
+  const i = META.info, p = i.population;
+  $('sampleInfo').textContent = `Mẫu chọn lọc, KHÔNG đại diện: nghiêng về user mô hình xếp tốt (NDCG@10 trung bình mẫu ${i['sample_ndcg@10']} so với ${p['ndcg@10_all']} trên toàn bộ ${p.test_users.toLocaleString('en-US')} user test), có cả khách mới và user đoán sai.`;
+}
+
+async function pickRandomSample() {
+  $('globalErrorMsg').textContent = '';
+  const pool = META.users.filter(u => inMode(u, STATE.mode));
+  const u = pool[Math.floor(Math.random() * pool.length)];
+  $('inputUserId').value = u.user_id;
+  await loadUserData();
+}
+
+function renderUserList(res) {
+  const ul = res.user_list;
+  const truth = new Set(ul.truth);
+  $('userListCard').style.display = 'block';
+  $('userListMeta').innerHTML = `User ${res.user_id}: ${res.n_test} booking test, ${ul.truth.length} cụm thật (${ul.truth.map(c => '#' + c).join(', ')}). ` +
+    `Trúng <b>${ul.hits.length}</b> / ${ul.truth.length} trong top-20 (${TAG_TEXT[res.tag]}).`;
+  $('userListChips').innerHTML = ul.top.map((c, i) =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:8px;${truth.has(c) ? 'outline:2px solid var(--hit);' : ''}">` +
+    `<small style="color:var(--muted)">${i + 1}</small>${chip(c)}${truth.has(c) ? '<b style="color:var(--hit)">&#10004;</b>' : ''}</span>`).join('');
+}
+
+
+// --- RENDER FUNCTIONS ---
+function renderAll(data) {
+  renderVerdictBanner(data);
+  renderArchitectureSvg(data);
+  renderTop5Detail(data);
+  renderBaselines(data);
+}
+
+/* 1. Verdict Banner */
+function renderVerdictBanner(data) {
+  const truth = data.truth ? data.truth.cluster : null;
+  const banner = $('verdictBanner');
+  const chipWrap = $('actualClusterChipWrap');
+  const badge = $('verdictHitBadge');
+  
+  if (truth === null) {
+    banner.className = 'verdict-card';
+    chipWrap.innerHTML = `<span style="font-size:0.9rem;color:var(--muted)">Chưa nạp</span>`;
+    badge.className = 'verdict-badge';
+    badge.textContent = 'Chưa có nhãn test';
+    $('pinMain').style.display = 'none';
+    $('pinPop').style.display = 'none';
+    $('pinKnn').style.display = 'none';
+    $('valMain').textContent = '-';
+    $('valPop').textContent = '-';
+    $('valKnn').textContent = '-';
+    return;
+  }
+
+  const isHit = data.truth.in_top;
+  banner.className = `verdict-card ${isHit ? 'hit' : 'miss'}`;
+  chipWrap.innerHTML = chip(truth, 'lg') + `<span style="font-weight:700;font-size:1.15rem;margin-left:4px;">Cluster #${truth}</span>`;
+  
+  badge.className = `verdict-badge ${isHit ? 'hit' : 'miss'}`;
+  badge.innerHTML = isHit 
+    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Trong Top 5 (Hạng #${data.truth.rank})`
+    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Ngoài Top 5 (Hạng #${data.truth.rank})`;
+
+  // Update track pins
+  const mainRank = data.truth.rank;
+  const popRank = data.baselines['Popularity'].truth_rank || 100;
+  const knnRank = data.baselines['ItemKNN'].truth_rank || 100;
+
+  $('pinMain').style.display = 'block';
+  $('pinPop').style.display = 'block';
+  $('pinKnn').style.display = 'block';
+
+  $('pinMain').style.left = `${Math.min(100, Math.max(2, mainRank))}%`;
+  $('pinPop').style.left = `${Math.min(100, Math.max(2, popRank))}%`;
+  $('pinKnn').style.left = `${Math.min(100, Math.max(2, knnRank))}%`;
+
+  $('valMain').textContent = `#${mainRank}`;
+  $('valPop').textContent = `#${popRank}`;
+  $('valKnn').textContent = `#${knnRank}`;
+}
+
+/* 2. Interactive SVG Architecture (Exact Stage 3 Layout) */
+function renderArchitectureSvg(data) {
+  const svg = $('archSvg');
+  const history = data.history || [];
+  const fields = getFormFields();
+  const currentDest = fields.dest;
+  const knownDest = data.known_destination;
+  const ws = data.w_samedest;
+  const truth = data.truth ? data.truth.cluster : null;
+  const top5 = data.top || [];
+
+  let svgContent = '';
+  svgContent += `<defs>
+    <marker id="arr-stage3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5c6166"/>
+    </marker>
+    <marker id="arr-stage3-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3b6ea5"/>
+    </marker>
+    <filter id="glow-hover" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#3b6ea5" flood-opacity="0.3"/>
+    </filter>
+  </defs>`;
+
+  // Header text left
+  svgContent += `<text x="30" y="24" font-size="16" fill="#5c6166" font-weight="600">Lịch sử (tối đa 20): L = ${history.length}</text>`;
+
+  // HISTORY BLOCK
+  if (history.length === 0) {
+    // Cold start box
+    svgContent += `<g class="svg-interactive" onclick="openHistoryModal()">
+      <rect x="30" y="44" width="150" height="212" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="105" y="110" font-size="16" fill="#334155" text-anchor="middle" font-weight="700">Khách mới</text>
+      <text x="105" y="134" font-size="14" fill="#64748b" text-anchor="middle">(Cold-start)</text>
+      <text x="105" y="160" font-size="13" fill="#64748b" text-anchor="middle">Lịch sử trống: L = 0</text>
+    </g>`;
+  } else if (history.length <= 3) {
+    // Show all <= 3 items
+    const yPositions = [44, 114, 184];
+    history.forEach((item, idx) => {
+      const y = yPositions[idx] || (44 + idx * 70);
+      const isSameDest = item.dest === currentDest;
+      svgContent += `<g class="svg-interactive" onclick="openHistoryModal()">
+        <rect x="30" y="${y}" width="150" height="52" rx="4" fill="${isSameDest ? '#eff6ff' : '#f2f2f1'}" stroke="${isSameDest ? '#3b6ea5' : '#5c6166'}" stroke-width="${isSameDest ? 2 : 1.2}"/>
+        <text x="105" y="${y + 24}" font-size="17" fill="#20242a" text-anchor="middle" font-weight="600">lượt ${idx + 1}: cluster ${item.cluster}</text>
+        <text x="105" y="${y + 43}" font-size="14" fill="${isSameDest ? '#2f5a88' : '#5c6166'}" text-anchor="middle">đ.đến: ${item.dest} ${isSameDest ? '★' : ''}</text>
+        <line x1="180" y1="${y + 26}" x2="203" y2="${y + 26}" stroke="#5c6166" stroke-width="1.3" marker-end="url(#arr-stage3)"/>
+      </g>`;
+    });
+  } else {
+    // > 3 items: Lượt 1, Lượt 2, "...", Lượt L
+    const item1 = history[0];
+    const item2 = history[1];
+    const itemL = history[history.length - 1];
+
+    // Lượt 1
+    const same1 = item1.dest === currentDest;
+    svgContent += `<g class="svg-interactive" onclick="openHistoryModal()">
+      <rect x="30" y="44" width="150" height="52" rx="4" fill="${same1 ? '#eff6ff' : '#f2f2f1'}" stroke="${same1 ? '#3b6ea5' : '#5c6166'}" stroke-width="${same1 ? 2 : 1.2}"/>
+      <text x="105" y="68" font-size="17" fill="#20242a" text-anchor="middle" font-weight="600">lượt 1: c.${item1.cluster}</text>
+      <text x="105" y="87" font-size="14" fill="${same1 ? '#2f5a88' : '#5c6166'}" text-anchor="middle">đ.đến ${item1.dest} ${same1 ? '★' : ''}</text>
+      <line x1="180" y1="70" x2="203" y2="70" stroke="#5c6166" stroke-width="1.3" marker-end="url(#arr-stage3)"/>
+    </g>`;
+
+    // Lượt 2
+    const same2 = item2.dest === currentDest;
+    svgContent += `<g class="svg-interactive" onclick="openHistoryModal()">
+      <rect x="30" y="106" width="150" height="52" rx="4" fill="${same2 ? '#eff6ff' : '#f2f2f1'}" stroke="${same2 ? '#3b6ea5' : '#5c6166'}" stroke-width="${same2 ? 2 : 1.2}"/>
+      <text x="105" y="130" font-size="17" fill="#20242a" text-anchor="middle" font-weight="600">lượt 2: c.${item2.cluster}</text>
+      <text x="105" y="149" font-size="14" fill="${same2 ? '#2f5a88' : '#5c6166'}" text-anchor="middle">đ.đến ${item2.dest} ${same2 ? '★' : ''}</text>
+      <line x1="180" y1="132" x2="203" y2="132" stroke="#5c6166" stroke-width="1.3" marker-end="url(#arr-stage3)"/>
+    </g>`;
+
+    // Dấu ba chấm "..." (Interactive Clickable)
+    svgContent += `<g class="svg-interactive" onclick="openHistoryModal()" style="cursor:pointer;" title="Bấm để xem toàn bộ ${history.length} lượt">
+      <rect x="75" y="168" width="60" height="26" rx="4" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+      <text x="105" y="186" font-size="18" fill="#1e293b" text-anchor="middle" font-weight="700">&vellip; (${history.length})</text>
+    </g>`;
+
+    // Lượt L
+    const sameL = itemL.dest === currentDest;
+    svgContent += `<g class="svg-interactive" onclick="openHistoryModal()">
+      <rect x="30" y="204" width="150" height="52" rx="4" fill="${sameL ? '#eff6ff' : '#f2f2f1'}" stroke="${sameL ? '#3b6ea5' : '#5c6166'}" stroke-width="${sameL ? 2 : 1.2}"/>
+      <text x="105" y="228" font-size="17" fill="#20242a" text-anchor="middle" font-weight="600">lượt L: c.${itemL.cluster}</text>
+      <text x="105" y="247" font-size="14" fill="${sameL ? '#2f5a88' : '#5c6166'}" text-anchor="middle">đ.đến ${itemL.dest} ${sameL ? '★' : ''}</text>
+      <line x1="180" y1="230" x2="203" y2="230" stroke="#5c6166" stroke-width="1.3" marker-end="url(#arr-stage3)"/>
+    </g>`;
+  }
+
+  // QUERY EMBEDDING BLOCK
+  svgContent += `<g class="svg-interactive" onclick="openQueryEmbeddingModal()" title="Bấm để xem chi tiết 14 trường feature">
+    <rect x="30" y="276" width="150" height="52" rx="4" fill="#3b6ea5" stroke="#2f5a88" stroke-width="1.6"/>
+    <text x="105" y="308" font-size="18" fill="#ffffff" text-anchor="middle" font-weight="700">query embedding</text>
+    <line x1="180" y1="302" x2="203" y2="302" stroke="#3b6ea5" stroke-width="2" marker-end="url(#arr-stage3-blue)"/>
+    <text x="30" y="350" font-size="15" fill="#2f5a88" font-weight="600">tổng 14 embedding trường</text>
+  </g>`;
+
+  // EMBEDDING LAYER COLUMN
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('embedding')" title="Bấm để xem kích hoạt lớp Embedding">
+    <rect x="205" y="44" width="34" height="284" rx="2" fill="#ececeb" stroke="#5c6166" stroke-width="1.2"/>
+    <g transform="rotate(-90 222 186)">
+      <text x="222" y="186" font-size="18" fill="#20242a" text-anchor="middle" font-weight="600">Lớp embedding</text>
+    </g>
+  </g>`;
+
+  // MAIN PROCESSING LAYER (× 2, dùng chung một khối)
+  svgContent += `<rect x="262" y="20" width="540" height="400" rx="4" fill="none" stroke="#20242a" stroke-width="1.5"/>
+  <text x="532" y="52" font-size="19" fill="#20242a" text-anchor="middle" font-weight="700">Lớp xử lý chính (× 2, dùng chung một khối)</text>`;
+
+  // 3D Isometric Tensor sequence x channel x feature
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('tensor3d')" title="Bấm để soi chiếu Tensor 3D/4D">
+    <polygon points="292,150 316,126 396,126 372,150" fill="#f2f2f1" stroke="#5c6166" stroke-width="1.2"/>
+    <polygon points="372,150 396,126 396,206 372,230" fill="#e4e4e2" stroke="#5c6166" stroke-width="1.2"/>
+    <rect x="292" y="150" width="80" height="80" fill="#f2f2f1" stroke="#5c6166" stroke-width="1.2"/>
+    <rect x="292" y="210" width="80" height="20" fill="#3b6ea5" stroke="#5c6166" stroke-width="1.2"/>
+    <line x1="312" y1="150" x2="312" y2="230" stroke="#5c6166" stroke-width="1"/>
+    <line x1="332" y1="150" x2="332" y2="230" stroke="#5c6166" stroke-width="1"/>
+    <line x1="352" y1="150" x2="352" y2="230" stroke="#5c6166" stroke-width="1"/>
+    <line x1="292" y1="170" x2="372" y2="170" stroke="#5c6166" stroke-width="1"/>
+    <line x1="292" y1="190" x2="372" y2="190" stroke="#5c6166" stroke-width="1"/>
+    <g transform="rotate(-90 281 190)"><text x="281" y="190" font-size="15" fill="#5c6166" text-anchor="middle">sequence</text></g>
+    <text x="332" y="252" font-size="15" fill="#5c6166" text-anchor="middle">channel</text>
+    <text x="372" y="112" font-size="15" fill="#5c6166" text-anchor="middle">feature</text>
+  </g>`;
+
+  // Line to Layer Norm
+  svgContent += `<line x1="400" y1="190" x2="426" y2="190" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>`;
+
+  // Layer Norm Bar
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('layernorm')" title="Bấm để xem chuẩn hóa Layer Norm">
+    <rect x="428" y="110" width="30" height="160" rx="2" fill="#ececeb" stroke="#5c6166" stroke-width="1.2"/>
+    <g transform="rotate(-90 445 190)">
+      <text x="445" y="190" font-size="17" fill="#20242a" text-anchor="middle" font-weight="600">Layer Norm</text>
+    </g>
+  </g>`;
+
+  // 3 Mixing branches
+  svgContent += `<line x1="458" y1="190" x2="484" y2="190" stroke="#5c6166" stroke-width="1.4"/>
+  <line x1="484" y1="109" x2="484" y2="281" stroke="#5c6166" stroke-width="1.4"/>
+  <line x1="484" y1="109" x2="502" y2="109" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>
+  <line x1="484" y1="190" x2="502" y2="190" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>
+  <line x1="484" y1="281" x2="502" y2="281" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>`;
+
+  // Sequence Mixing
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('seq_mix')" title="Bấm để xem Sequence Mixing">
+    <rect x="504" y="80" width="230" height="58" rx="4" fill="#ffffff" stroke="#20242a" stroke-width="1.4"/>
+    <text x="619" y="106" font-size="18" fill="#20242a" text-anchor="middle" font-weight="700">Sequence mixing</text>
+    <text x="619" y="127" font-size="15" fill="#5c6166" text-anchor="middle">giữa các vị trí chuỗi</text>
+  </g>`;
+
+  // Feature Mixing
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('feat_mix')" title="Bấm để xem Feature Mixing">
+    <rect x="504" y="161" width="230" height="58" rx="4" fill="#ffffff" stroke="#20242a" stroke-width="1.4"/>
+    <text x="619" y="187" font-size="18" fill="#20242a" text-anchor="middle" font-weight="700">Feature mixing</text>
+    <text x="619" y="208" font-size="15" fill="#5c6166" text-anchor="middle">chỉ 1 đặc trưng (cluster ID)</text>
+  </g>`;
+
+  // Channel Mixing
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('chan_mix')" title="Bấm để xem Channel Mixing">
+    <rect x="504" y="252" width="230" height="58" rx="4" fill="#ffffff" stroke="#20242a" stroke-width="1.4"/>
+    <text x="619" y="278" font-size="18" fill="#20242a" text-anchor="middle" font-weight="700">Channel mixing</text>
+    <text x="619" y="299" font-size="15" fill="#5c6166" text-anchor="middle">giữa các đơn vị ẩn</text>
+  </g>`;
+
+  // Confluence lines to circle addition (+)
+  svgContent += `<line x1="734" y1="109" x2="762" y2="109" stroke="#5c6166" stroke-width="1.4"/>
+  <line x1="762" y1="109" x2="762" y2="174" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>
+  <line x1="734" y1="281" x2="762" y2="281" stroke="#5c6166" stroke-width="1.4"/>
+  <line x1="762" y1="281" x2="762" y2="206" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>
+  <line x1="734" y1="190" x2="746" y2="190" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>
+  <g class="svg-interactive" onclick="inspectLayer('merge')" title="Bấm để xem kết quả hợp nhất & 2 tầng Mixer">
+    <circle cx="762" cy="190" r="14" fill="#ffffff" stroke="#20242a" stroke-width="1.4"/>
+    <line x1="750" y1="190" x2="774" y2="190" stroke="#20242a" stroke-width="1.4"/>
+    <line x1="762" y1="178" x2="762" y2="202" stroke="#20242a" stroke-width="1.4"/>
+  </g>`;
+
+  // Line to Output Layer
+  svgContent += `<line x1="776" y1="190" x2="820" y2="190" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>`;
+
+  // OUTPUT LAYER
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('output')" title="Bấm để xem Lớp đầu ra & Logits">
+    <rect x="822" y="70" width="34" height="240" rx="2" fill="#ececeb" stroke="#5c6166" stroke-width="1.2"/>
+    <g transform="rotate(-90 839 190)">
+      <text x="839" y="190" font-size="18" fill="#20242a" text-anchor="middle" font-weight="600">Lớp đầu ra</text>
+    </g>
+  </g>`;
+
+  // Arrow & read query position
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('output')" title="Bấm để xem Lớp đầu ra & Logits">
+    <line x1="858" y1="190" x2="890" y2="190" stroke="#3b6ea5" stroke-width="1.8" marker-end="url(#arr-stage3-blue)"/>
+    <text x="892" y="150" font-size="15" fill="#2f5a88" font-weight="600">đọc tại: vị trí query</text>
+    <rect x="892" y="164" width="150" height="52" rx="4" fill="#ffffff" stroke="#20242a" stroke-width="1.4"/>
+    <text x="967" y="187" font-size="16" fill="#20242a" text-anchor="middle">điểm cho</text>
+    <text x="967" y="207" font-size="16" fill="#20242a" text-anchor="middle" font-weight="700">100 cluster</text>
+    <line x1="967" y1="218" x2="967" y2="238" stroke="#5c6166" stroke-width="1.4" marker-end="url(#arr-stage3)"/>
+  </g>`;
+
+  // SAMEDEST BLOCK
+  const sameDestColor = knownDest ? '#15803d' : '#3b6ea5';
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('samedest')" title="Bấm để xem phân phối xác suất sameDest">
+    <rect x="852" y="324" width="300" height="100" rx="6" fill="#ffffff" stroke="${sameDestColor}" stroke-width="${knownDest ? 2.2 : 2}"/>
+    <text x="866" y="356" font-size="18" fill="${knownDest ? '#166534' : '#2f5a88'}" font-weight="700">sameDest ${knownDest ? '★' : ''}</text>
+    <text x="866" y="380" font-size="15" fill="#20242a">Điểm đến #${currentDest}</text>
+    <text x="866" y="404" font-size="14" fill="${knownDest ? '#15803d' : '#64748b'}" font-weight="600">Trọng số w = ${ws} ${knownDest ? '(Kích hoạt)' : '(w = 0)'}</text>
+  </g>`;
+
+  // Dashed blue connecting line from History to sameDest
+  svgContent += `<path d="M 12 70 V 434 H 1002 V 426" fill="none" stroke="#3b6ea5" stroke-width="1.6" stroke-dasharray="5 5" marker-end="url(#arr-stage3-blue)"/>
+  <line x1="12" y1="70" x2="30" y2="70" stroke="#3b6ea5" stroke-width="1.6" stroke-dasharray="5 5"/>
+  <line x1="12" y1="132" x2="30" y2="132" stroke="#3b6ea5" stroke-width="1.6" stroke-dasharray="5 5"/>
+  <line x1="12" y1="230" x2="30" y2="230" stroke="#3b6ea5" stroke-width="1.6" stroke-dasharray="5 5"/>`;
+
+  // Arrow up from sameDest to Fusion box
+  svgContent += `<line x1="1016" y1="322" x2="1016" y2="296" stroke="#3b6ea5" stroke-width="1.8" marker-end="url(#arr-stage3-blue)"/>`;
+
+  // FUSION & OUTPUT RANKING BLOCK (Far Right)
+  svgContent += `<g class="svg-interactive" onclick="inspectLayer('fusion')" title="Bấm để xem công thức và trọng số dung hợp điểm">
+    <rect x="880" y="240" width="272" height="54" rx="6" fill="#ffffff" stroke="#3b6ea5" stroke-width="2"/>
+    <text x="1016" y="262" font-size="16" fill="#20242a" text-anchor="middle" font-weight="600" font-style="italic">log p(model) + w &middot; log p(sameDest)</text>
+    <text x="1016" y="283" font-size="14" fill="#3b6ea5" text-anchor="middle" font-weight="600">Hợp nhất &rarr; Top 5</text>
+  </g>`;
+
+  svg.innerHTML = svgContent;
+}
+
+/* 3. Top 5 Predictions Detail & Truth Highlight */
+function renderTop5Detail(data) {
+  const top = data.top || [];
+  const truth = data.truth ? data.truth.cluster : null;
+
+  let cardsHtml = '';
+  top.forEach(item => {
+    const isTruth = item.cluster === truth;
+    cardsHtml += `<div class="rec-card ${isTruth ? 'hit' : ''}" onclick="openAll100Modal()" title="Bấm để xem danh sách 100 cluster">
+      <div class="rec-card-header">
+        <span class="rec-rank-tag">#${item.rank}</span>
+        <span class="rec-score-val">${fmtScore(item.score)}</span>
+      </div>
+      <div class="rec-card-main">
+        ${chip(item.cluster, 'lg')}
+        <div>
+          <div class="rec-cluster-title">Cluster ${item.cluster}</div>
+          ${isTruth ? `<div class="rec-hit-pill">&#10004; Khách đã đặt</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  });
+  $('top5CardsGrid').innerHTML = cardsHtml;
+
+  // 1 dòng bên dưới ghi cluster trúng & rank thật
+  const alertEl = $('truthMissAlert');
+  if (truth !== null) {
+    const isHit = data.truth.in_top;
+    alertEl.style.display = 'block';
+    if (isHit) {
+      alertEl.innerHTML = `<div class="truth-summary-bar hit">
+        ${chip(truth)}
+        <span>Khách thực tế đặt: <b>Cluster #${truth}</b> &middot; Dự đoán trúng ở <b>Hạng #${data.truth.rank} / 100</b> (Top 5)</span>
+      </div>`;
+    } else {
+      alertEl.innerHTML = `<div class="truth-summary-bar miss">
+        ${chip(truth)}
+        <span>Khách thực tế đặt: <b>Cluster #${truth}</b> &middot; Hạng dự đoán: <b>#${data.truth.rank} / 100</b></span>
+        <button class="btn btn-outline" style="padding:2px 8px;font-size:0.75rem;margin-left:auto;background:#fff;" onclick="openAll100Modal()">Xem bảng 100</button>
+      </div>`;
+    }
+  } else {
+    alertEl.style.display = 'none';
+  }
+}
+
+/* 4. Baselines Comparison */
+function renderBaselines(data) {
+  const truth = data.truth ? data.truth.cluster : null;
+  const b = data.baselines;
+  const knn = b['ItemKNN'];
+  const pop = b['Popularity'];
+
+  const renderTableRows = (entry) => {
+    return entry.top.map((c, idx) => {
+      const isTruth = c === truth;
+      return `<tr class="${isTruth ? 'hit-row' : ''}">
+        <td style="font-weight:700;color:${isTruth ? 'var(--hit)' : 'var(--muted)'};">#${idx + 1}</td>
+        <td>${chip(c)} <b style="margin-left:6px;">Cluster ${c}</b></td>
+        <td style="text-align:right;">${isTruth ? '<span class="cluster-chip sm" style="background:var(--hit-bg);color:var(--hit-text);border-color:var(--hit-border);">&#10004; TRÚNG</span>' : '<span style="color:var(--muted);font-size:0.75rem;">-</span>'}</td>
+      </tr>`;
+    }).join('');
+  };
+
+  const renderFooter = (entry) => {
+    if (truth === null) return `<div>Chưa có booking test để so sánh</div>`;
+    const isHit = entry.top.includes(truth);
+    return `<div>Cluster thật: <b>Hạng #${entry.truth_rank || 100} / 100</b></div>
+    <span class="verdict-badge ${isHit ? 'hit' : 'miss'}">${isHit ? '&#10004; Trong Top 5' : 'Ngoài Top 5'}</span>`;
+  };
+
+  $('knnTop5Tbody').innerHTML = renderTableRows(knn);
+  $('knnFooter').innerHTML = renderFooter(knn);
+  if ($('knnNote')) $('knnNote').textContent = knn.note || '';
+
+  $('popTop5Tbody').innerHTML = renderTableRows(pop);
+  $('popFooter').innerHTML = renderFooter(pop);
+}
+
+// --- MODAL HANDLERS ---
+function openHistoryModal() {
+  if (!STATE.currentData) return;
+  const history = STATE.currentData.history || [];
+  const fields = getFormFields();
+  const currentDest = fields.dest;
+
+  $('modalHistoryMeta').innerHTML = `Người dùng hiện có <b>${STATE.currentData.total_history_count || history.length}</b> lượt đặt trong lịch sử. Mô hình chuỗi tiếp nhận tối đa 20 lượt gần nhất. Điểm đến đang tìm là <b>${currentDest}</b>.`;
+
+  if (history.length === 0) {
+    $('modalHistoryTbody').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Lịch sử trống: Khách mới (Cold-start). Không có lượt đặt nào trước đó.</td></tr>`;
+  } else {
+    $('modalHistoryTbody').innerHTML = history.map((item, idx) => {
+      const isSame = item.dest === currentDest;
+      return `<tr class="${isSame ? 'same-dest-row' : ''}">
+        <td><b>#${idx + 1}</b></td>
+        <td>Event #${item.event}</td>
+        <td>${chip(item.cluster)} Cluster ${item.cluster}</td>
+        <td><b>${item.dest}</b> ${isSame ? '<span style="color:var(--primary);font-weight:700;">(Trùng điểm đến)</span>' : ''}</td>
+        <td>${isSame ? '<span style="color:var(--hit);font-weight:600;">&#10004; Được sameDest sử dụng</span>' : '<span style="color:var(--muted);">Khác điểm đến</span>'}</td>
+      </tr>`;
+    }).join('');
+  }
+  $('modalHistory').classList.add('open');
+}
+
+function openQueryEmbeddingModal() {
+  if (!STATE.currentData || !META) return;
+  const fields = getFormFields();
+
+  $('modalQueryTbody').innerHTML = META.fields.map(f => {
+    const val = fields[f.name];
+    let decoded = String(val);
+    if (f.options) {
+      const opt = f.options.find(o => o[0] === val);
+      if (opt) decoded = String(opt[1]);
+    } else if (f.name === 'dest') {
+      decoded = `Điểm đến #${val}`;
+    } else if (f.name === 'country') {
+      decoded = `Quốc gia #${val}`;
+    }
+
+    let inVocab = true;
+    if (f.name === 'dest' && !STATE.currentData.dest_in_vocab) inVocab = false;
+
+    return `<tr>
+      <td><b>${f.name}</b></td>
+      <td style="color:var(--muted);">${FIELD_DESC[f.name] || LABEL[f.name]}</td>
+      <td><span style="font-family:var(--mono);font-weight:700;color:var(--primary);">${val}</span></td>
+      <td>${decoded}</td>
+      <td>${inVocab ? '<span class="cluster-chip sm" style="background:#dcfce7;color:#166534;">In-Vocab</span>' : '<span class="cluster-chip sm" style="background:#fee2e2;color:#991b1b;">Out-of-Vocab (0)</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  $('modalQueryEmbedding').classList.add('open');
+}
+
+function openAll100Modal() {
+  if (!STATE.currentData) return;
+  filterAndRender100Ranking();
+  $('modalAll100').classList.add('open');
+}
+
+function filterAndRender100Ranking() {
+  if (!STATE.currentData) return;
+  const allRanking = STATE.currentData.all_ranking || [];
+  const truth = STATE.currentData.truth ? STATE.currentData.truth.cluster : null;
+  const filterText = ($('filterClusterInput').value || '').trim().toLowerCase();
+  
+  const activeBtn = document.querySelector('.ranking-toolbar .segment-group button.active');
+  const filterMode = activeBtn ? activeBtn.dataset.filter : 'all';
+
+  const popRanks = {};
+  const popAll = (STATE.currentData.baselines['Popularity'].all_ranking || []);
+  popAll.forEach(item => { popRanks[item.cluster] = item.rank; });
+
+  const knnRanks = {};
+  const knnAll = (STATE.currentData.baselines['ItemKNN'].all_ranking || []);
+  knnAll.forEach(item => { knnRanks[item.cluster] = item.rank; });
+
+  let filtered = allRanking.filter(item => {
+    if (filterMode === 'top5' && item.rank > 5) return false;
+    if (filterMode === 'truth' && item.cluster !== truth) return false;
+    if (filterText && !String(item.cluster).includes(filterText)) return false;
+    return true;
+  });
+
+  $('rankingFilterCount').textContent = `Hiển thị ${filtered.length} / ${allRanking.length} cụm`;
+
+  $('modalAll100Tbody').innerHTML = filtered.map(item => {
+    const isTruth = item.cluster === truth;
+    const popR = popRanks[item.cluster] || '-';
+    const knnR = knnRanks[item.cluster] || '-';
+
+    return `<tr class="${isTruth ? 'highlight-row' : ''}">
+      <td><b>#${item.rank}</b></td>
+      <td>${chip(item.cluster)} Cluster ${item.cluster} ${isTruth ? '<span style="color:var(--hit);font-weight:700;margin-left:4px;">&#10004; THẬT</span>' : ''}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:700;">${fmtScore(item.score)}</td>
+      <td style="text-align:right;font-family:var(--mono);">${fmtPct(item.model_p)}</td>
+      <td style="text-align:right;font-family:var(--mono);">${fmtPct(item.samedest_share)}</td>
+      <td style="text-align:center;font-family:var(--mono);">#${popR}</td>
+      <td style="text-align:center;font-family:var(--mono);">#${knnR}</td>
+    </tr>`;
+  }).join('');
+}
+
+// --- MODEL INTROSPECTION INSPECTOR ---
+function renderTensorCard(title, t) {
+  if (!t || !t.shape) return '';
+  const shapeStr = `[${t.shape.join(', ')}]`;
+  const samples = t.sample || [];
+  const maxAbs = Math.max(...samples.map(Math.abs), 0.0001);
+
+  const barsHtml = samples.map(val => {
+    const isPos = val >= 0;
+    const heightPct = Math.min(100, Math.max(8, (Math.abs(val) / maxAbs) * 100));
+    return `<div class="inspect-bar-col" title="Giá trị: ${val}">
+      <div style="flex:1;display:flex;align-items:flex-end;">
+        ${isPos ? `<div style="width:100%;height:${heightPct/2}%;background:var(--primary);border-radius:2px 2px 0 0;"></div>` : ''}
+      </div>
+      <div style="width:100%;height:1px;background:#cbd5e1;"></div>
+      <div style="flex:1;display:flex;align-items:flex-start;">
+        ${!isPos ? `<div style="width:100%;height:${heightPct/2}%;background:#ea580c;border-radius:0 0 2px 2px;"></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const sampleChipsHtml = samples.map((v, i) => 
+    `<span class="inspect-sample-chip" title="Chiều [${i}]">${v > 0 ? '+' : ''}${v}</span>`
+  ).join('');
+
+  return `<div class="inspect-tensor-card">
+    <div class="inspect-tensor-header">
+      <div style="font-weight:700;font-size:0.92rem;color:var(--ink);">${title}</div>
+      <span class="cluster-chip sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-family:var(--mono);">Shape: ${shapeStr}</span>
+    </div>
+    <div class="inspect-stats-grid">
+      <div class="inspect-stat-box"><div class="inspect-stat-label">Min</div><div class="inspect-stat-val" style="color:#ea580c;">${t.min}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">Max</div><div class="inspect-stat-val" style="color:#16a34a;">${t.max}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">Mean (μ)</div><div class="inspect-stat-val">${t.mean}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">Std (σ)</div><div class="inspect-stat-val">${t.std}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">L2 Norm</div><div class="inspect-stat-val" style="color:var(--primary);">${t.l2_norm}</div></div>
+    </div>
+    <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px;">Phân phối 16 giá trị đầu (Sparkline / Âm &middot; Dương):</div>
+    <div class="inspect-bars-container">${barsHtml}</div>
+    <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;">Mẫu giá trị số thực kích hoạt (16 chiều đầu):</div>
+    <div class="inspect-sample-wrap">${sampleChipsHtml}</div>
+  </div>`;
+}
+
+function inspectLayer(layerKey) {
+  if (!STATE.currentData || !STATE.currentData.activations) {
+    alert('Dữ liệu mô hình chưa tải xong. Vui lòng thử lại sau giây lát.');
+    return;
+  }
+  const act = STATE.currentData.activations[layerKey];
+  if (!act) return;
+
+  $('inspectModalTitle').textContent = act.name;
+  $('inspectModalBadge').textContent = layerKey.toUpperCase();
+
+  let bodyHtml = `<div class="inspect-role-card">
+    <div style="font-weight:700;color:var(--primary);margin-bottom:4px;">Vai trò kiến trúc trong thuật toán:</div>
+    <div>${act.role}</div>
+    ${act.formula ? `<div style="margin-top:8px;"><div style="font-size:0.75rem;color:var(--muted);font-weight:700;">Công thức toán học:</div><div class="inspect-formula">${act.formula}</div></div>` : ''}
+  </div>`;
+
+  if (layerKey === 'embedding') {
+    bodyHtml += renderTensorCard('1. Embedding chuỗi lịch sử (Item Embedding)', act.history_emb);
+    bodyHtml += renderTensorCard('2. Query Vector (Tổng 14 trường tìm kiếm + Mask)', act.query_vec);
+    bodyHtml += renderTensorCard('3. Tensor ghép nối chuỗi + Query [S+1, H]', act.combined);
+  } else if (layerKey === 'tensor3d') {
+    bodyHtml += renderTensorCard('Tensor 3D/4D sau Unsqueeze & Transpose', act.tensor);
+  } else if (layerKey === 'layernorm') {
+    bodyHtml += renderTensorCard('Tensor chuẩn hóa qua norm2(X)', act.tensor);
+  } else if (layerKey === 'seq_mix') {
+    bodyHtml += renderTensorCard('Đầu ra Sequence Mixing (MLP trên chiều 21 vị trí)', act.tensor);
+  } else if (layerKey === 'feat_mix') {
+    bodyHtml += renderTensorCard('Đầu ra Feature Mixing (MLP trên chiều kênh)', act.tensor);
+  } else if (layerKey === 'chan_mix') {
+    bodyHtml += renderTensorCard('Đầu ra Channel Mixing (MLP giữa 64 đơn vị ẩn)', act.tensor);
+  } else if (layerKey === 'merge') {
+    bodyHtml += renderTensorCard('Đầu ra sau Layer 1 (x0 + x1 + x2)', act.layer1);
+    bodyHtml += renderTensorCard('Đầu ra sau Layer 2 (Lặp khối thứ 2)', act.layer2);
+  } else if (layerKey === 'output') {
+    bodyHtml += renderTensorCard('1. Vector ẩn tại Query Position (sau LayerNorm)', act.query_hidden);
+    bodyHtml += renderTensorCard('2. Điểm Logits trước Softmax (100 cluster)', act.logits);
+    bodyHtml += renderTensorCard('3. Xác suất Softmax của mô hình SMLP4Rec (model_p)', act.model_softmax_p);
+  } else if (layerKey === 'samedest') {
+    bodyHtml += `<div class="inspect-tensor-card">
+      <div style="font-weight:700;margin-bottom:6px;">Trạng thái sameDest trong lần chạy này:</div>
+      <div style="display:flex;gap:12px;margin-bottom:12px;">
+        <span class="cluster-chip sm" style="background:${act.active ? '#dcfce7' : '#f1f5f9'};color:${act.active ? '#166534' : '#64748b'};">
+          ${act.active ? 'Đã kích hoạt (Điểm đến có trong lịch sử)' : 'Chưa kích hoạt (Điểm đến mới)'}
+        </span>
+        <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">Trọng số w = ${act.weight_w}</span>
+      </div>
+    </div>`;
+    bodyHtml += renderTensorCard('Phân phối xác suất sameDest trên 100 cụm', act.distribution);
+  } else if (layerKey === 'fusion') {
+    bodyHtml += `<div class="inspect-tensor-card">
+      <div style="font-weight:700;margin-bottom:6px;">Tham số dung hợp tối ưu trên tập Validation:</div>
+      <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <span class="cluster-chip sm" style="background:#e0f2fe;color:#0369a1;">Alpha làm mịn: ${act.alpha}</span>
+        <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">Trọng số w: ${act.weight_w}</span>
+      </div>
+    </div>`;
+    bodyHtml += renderTensorCard('Log-Score sau dung hợp (Trước Softmax cuối)', act.final_scores);
+  }
+
+  $('inspectModalBody').innerHTML = bodyHtml;
+  $('modalInspector').classList.add('open');
+}
+
+// --- MODAL CLOSE LISTENERS ---
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.onclick = () => {
+    const modalId = btn.dataset.close;
+    if ($(modalId)) $(modalId).classList.remove('open');
+  };
+});
+document.querySelectorAll('.modal-backdrop').forEach(bd => {
+  bd.onclick = (e) => {
+    if (e.target === bd) bd.classList.remove('open');
+  };
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-backdrop.open').forEach(el => el.classList.remove('open'));
+  }
+});
+
+// --- FILTER LISTENERS IN MODAL 3 ---
+$('filterClusterInput').addEventListener('input', filterAndRender100Ranking);
+document.querySelectorAll('.ranking-toolbar .segment-group button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.ranking-toolbar .segment-group button').forEach(el => el.classList.remove('active'));
+    b.classList.add('active');
+    filterAndRender100Ranking();
+  };
+});
+
+// --- INIT APP ---
+async function initApp() {
+  META = await api('/api/meta');
+  buildForm();
+  buildUserSelect();
+
+  // User actions
+  $('btnLoadUser').onclick = loadUserData;
+  $('inputUserId').addEventListener('keydown', e => { if (e.key === 'Enter') loadUserData(); });
+
+  // Random sample actions
+  $('btnRandomSample').onclick = () => pickRandomSample();
+
+  // Sample mode buttons
+  document.querySelectorAll('#sampleModeGroup button').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('#sampleModeGroup button').forEach(el => el.classList.remove('active'));
+      btn.classList.add('active');
+      STATE.mode = btn.dataset.mode;
+      pickRandomSample();
+    };
+  });
+
+  // Buttons in view
+  $('btnOpen100Modal').onclick = openAll100Modal;
+
+  // Initial pick
+  await pickRandomSample();
+}
+
+initApp().catch(err => {
+  $('globalErrorMsg').textContent = `Khởi tạo thất bại: ${err.message}`;
+});
+</script>
+
+</body>
+</html>
