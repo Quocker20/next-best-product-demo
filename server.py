@@ -41,7 +41,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.ROUTE:
             return self.ROUTE
         path = self.path.split("?")[0]
-        return path[path.index("/api/") + 5:] if "/api/" in path else path
+        if "/api/" not in path:
+            return path
+        return path[path.index("/api/") + 5:].rstrip("/").removesuffix(".json")  # api/meta.json == api/meta
 
     def _send(self, code: int, body: bytes, ctype: str) -> None:
         self.send_response(code)

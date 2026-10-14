@@ -1,5 +1,8 @@
 {
-  "rewrites": [{ "source": "/api/:name/", "destination": "/api/:name" }],
+  "rewrites": [
+    { "source": "/api/:name.json", "destination": "/api/:name" },
+    { "source": "/api/:name/", "destination": "/api/:name" }
+  ],
   "functions": {
     "api/*.py": {
       "includeFiles": "{checkpoints,data}/**",

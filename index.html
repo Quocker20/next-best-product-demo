@@ -1482,7 +1482,7 @@ async function runRecommend() {
       truth: STATE.truth,
       fields: getFormFields()
     };
-    const res = await api('/api/recommend', payload);
+    const res = await api('/api/recommend.json', payload);
     if (requestId !== STATE.isBusy) return;
     $('globalErrorMsg').textContent = '';
     STATE.currentData = res;
@@ -1510,7 +1510,7 @@ async function loadUserData() {
     return;
   }
   try {
-    const res = await api('/api/user', { user_id: uid });
+    const res = await api('/api/user.json', { user_id: uid });
     $('selectUser').value = String(res.user_id);
     if (res.n_test === 0) {
       STATE.index = '';
@@ -2170,7 +2170,7 @@ document.querySelectorAll('.ranking-toolbar .segment-group button').forEach(b =>
 
 // --- INIT APP ---
 async function initApp() {
-  META = await api('/api/meta');
+  META = await api('/api/meta.json');
   buildForm();
   buildUserSelect();
 
