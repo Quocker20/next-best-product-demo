@@ -50,6 +50,8 @@ MAX_TEST = 6
 rows = np.load(R / "data/processed/expedia_date_split/rows.npz")
 W, USER, Y, L = rows["window"], rows["user"], rows["y"].astype(np.int64), rows["L"]
 assert (rows["event"] == np.arange(len(W))).all()
+rk = np.load(R / "data/interim/week6/ranks_main_s2024.npz")
+tf_rank = dict(zip(rk["event_test"].tolist(), rk["test_tf"].tolist()))  # teacher-forced rank of the true cluster
 top = np.load(R / "data/interim/week6/user_top20.npz")
 main = top[f"main_{SEED}_m2_merge"].astype(np.int64)  # (u, 20) clusters 0..99
 users = top["user"]
@@ -100,17 +102,18 @@ for i, tag in picked:
         b = {"event": int(e), "cluster": int(Y[e] - 1), "dest": int(rows["dest"][e]), "test": bool(W[e] == 2)}
         if b["test"]:
             b["fields"] = {f: int(c) for f, c in zip(QUERY_FIELDS, rows["codes"][e])}
+            b["official_rank"] = int(tf_rank[int(e)])
         bk.append(b)
     first = t_idx[0]
     sl = int(rows["seq_len"][first])
     assert [b["cluster"] for b in bk[:len(prev)]][-sl:] == (rows["seq"][first][:sl] - 1).tolist() or sl == 0, uid
     sample.append({"user_id": uid, "tag": tag, "cold": bool(cold[i]), "ndcg10": round(float(ndcg10[i]), 4),
-                   "official_top20": main[i].tolist(), "bookings": bk})
+                   "bookings": bk})
 
 cfg = yaml.safe_load((R / "configs/split.yaml").read_text(encoding="utf-8"))
 res = json.loads((R / "results/week6_retrain/user_top20.json").read_text(encoding="utf-8"))["results"]["main"]
 info = {"split": f"train < {cfg['valid_start']} <= valid < {cfg['test_start']} <= test < {cfg['test_end']}",
-        "seed": SEED, "reranker": "m2_merge", "n_sample": len(sample),
+        "seed": SEED, "n_sample": len(sample),
         "composition": {t: sum(s["tag"] == t for s in sample) for t in N_PICK},
         "population": {"test_users": int(len(users)), "cold_share": round(float(cold.mean()), 4),
                        "ndcg@10_all": round(res["all"]["ndcg@10"], 4), "ndcg@10_cold": round(res["cold"]["ndcg@10"], 4),

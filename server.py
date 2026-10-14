@@ -5,7 +5,7 @@
 GET  /              index.html
 GET  /api/meta      form fields, model label, sample users
 GET  /healthz       liveness probe
-POST /api/user      {user_id}                  -> test bookings of a sample user + fixed top-20 list
+POST /api/user      {user_id}                  -> test bookings of a sample user (search fields + actual cluster)
 POST /api/recommend {user_id, index, fields, truth} -> top-5 of the main model, ItemKNN, Popularity
 """
 

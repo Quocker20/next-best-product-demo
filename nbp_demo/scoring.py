@@ -1,4 +1,4 @@
-"""sameDest, score fusion, probabilities and the two-step user list (numpy only).
+"""sameDest, score fusion and probabilities (numpy only).
 
 Same maths as the research repo (`nbp.hybrid.*`, `nbp.eval.two_step`). Cluster ids here are the raw
 hotel clusters 0..99; the model works on ids c + 1 (0 = padding).
@@ -9,7 +9,6 @@ from __future__ import annotations
 import numpy as np
 
 K = 100
-TOP = 20
 
 
 def same_dest_share(hist_clusters: list[int], hist_dest: list[int], q_dest: int, base: float) -> np.ndarray:
@@ -44,11 +43,3 @@ def softmax(logits: np.ndarray) -> np.ndarray:
 def rank_order(score: np.ndarray) -> np.ndarray:
     """Clusters sorted best first, ties to the lower cluster id."""
     return np.argsort(-score, kind="stable")
-
-
-def merge_top(ids1, p1, ids2, p2, k: int = TOP) -> list[int]:
-    """Reranker m2_merge: union of two scored lists, max probability per cluster, top k."""
-    full = np.full(K, -1.0)
-    full[ids1] = p1
-    full[ids2] = np.maximum(full[ids2], p2)
-    return [int(c) for c in np.argsort(-full, kind="stable")[:k]]

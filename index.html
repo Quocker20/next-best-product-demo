@@ -1113,15 +1113,6 @@ input:focus, select:focus {
       </div>
     </div>
 
-    <!-- DANH SÁCH TOP-20 CỦA USER (giao thức user-level) -->
-    <div class="card" id="userListCard" style="display:none;">
-      <div class="card-header"><h3>Danh sách Top-20 cố định của user (giao thức đánh giá user-level)</h3></div>
-      <div class="card-body">
-        <div class="hint-text" id="userListMeta" style="margin-bottom:8px;"></div>
-        <div id="userListChips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-      </div>
-    </div>
-
     <!-- KHỐI 1: MÔ HÌNH CHÍNH (MAIN MODEL VIEW) -->
     <div class="arch-card" id="mainModelView">
       <div class="arch-header">
@@ -1520,13 +1511,11 @@ async function loadUserData() {
     STATE.index = '';
     STATE.truth = '';
     $('userTestBookingWrap').style.display = 'none';
-    $('userListCard').style.display = 'none';
     await runRecommend();
     return;
   }
   try {
     const res = await api('/api/user', { user_id: uid });
-    renderUserList(res);
     $('selectUser').value = String(res.user_id);
     if (res.n_test === 0) {
       STATE.index = '';
@@ -1581,17 +1570,6 @@ async function pickRandomSample() {
   const u = pool[Math.floor(Math.random() * pool.length)];
   $('inputUserId').value = u.user_id;
   await loadUserData();
-}
-
-function renderUserList(res) {
-  const ul = res.user_list;
-  const truth = new Set(ul.truth);
-  $('userListCard').style.display = 'block';
-  $('userListMeta').innerHTML = `User ${res.user_id}: ${res.n_test} booking test, ${ul.truth.length} cụm thật (${ul.truth.map(c => '#' + c).join(', ')}). ` +
-    `Trúng <b>${ul.hits.length}</b> / ${ul.truth.length} trong top-20 (${TAG_TEXT[res.tag]}).`;
-  $('userListChips').innerHTML = ul.top.map((c, i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:8px;${truth.has(c) ? 'outline:2px solid var(--hit);' : ''}">` +
-    `<small style="color:var(--muted)">${i + 1}</small>${chip(c)}${truth.has(c) ? '<b style="color:var(--hit)">&#10004;</b>' : ''}</span>`).join('');
 }
 
 

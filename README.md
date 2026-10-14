@@ -6,10 +6,12 @@ the report are in the research repo (`next-best-product-recommendation`).
 
 - Model: checkpoint `checkpoints/query_d0.2_s2024.pth` (reported seed 2024) + sameDest fusion (alpha 0.1, w 0.5, recency 0.7).
 - Baselines: ItemKNN (K = 50, history only) and global popularity.
-- Data: 48 test users (`data/sample_users.json`, window 2014-11-01 to 2015-01-01), with their last 20 earlier bookings.
+- Data: 48 test users (`data/sample_users.json`, window 2014-11-01 to 2015-01-01), each with the last 20 earlier bookings. The demo replays one booking at a time, like a customer searching: the history is every booking before it (teacher-forced), the search fields are the 14 fields of that booking.
 - `cluster` is an anonymous proxy of room category / package. Offline evaluation only.
 
 ## The sample is biased on purpose
+
+Groups come from the user-level evaluation (one fixed top-20 per user), used only to pick the sample; the demo itself replays single bookings.
 
 | Group | Users | Rule |
 |---|---|---|
@@ -27,7 +29,7 @@ the model ranks well, but keeps cold users and misses. Do not quote sample numbe
 ```bash
 pip install -r requirements.txt
 python server.py            # http://127.0.0.1:8765, PORT env var is honoured
-python -m pytest tests      # engine reproduces the research top-20 lists for all 48 users
+python -m pytest tests      # engine reproduces the research rank of the true cluster for every test booking of the 48 users
 ```
 
 `index.html` is the UI (served at `/`); `/healthz` is the liveness probe.

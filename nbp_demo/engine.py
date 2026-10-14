@@ -10,7 +10,7 @@ import torch
 
 from nbp_demo.features import LEAD_BINS, QUERY_FIELDS, encode
 from nbp_demo.model import QueryModel
-from nbp_demo.scoring import (K, TOP, merge_top, rank_order, same_dest_distribution, same_dest_share,
+from nbp_demo.scoring import (K, rank_order, same_dest_distribution, same_dest_share,
                               smoothed_log, softmax)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,36 +79,6 @@ class Engine:
             s = h @ self.sim + self.tie_eps * self.pop
         return s / s.sum()
 
-    def user_list(self, user: dict) -> dict:
-        """The fixed top-20 of the user-level protocol (two steps, reranker m2_merge) for the main model."""
-        bk = user["bookings"]
-        tests = [i for i, b in enumerate(bk) if b["test"]]
-        i1 = tests[0]
-        h1 = self.history(user, i1)
-        sc1, _, _, _ = self.main_score([b["cluster"] for b in h1], [b["dest"] for b in h1], bk[i1]["fields"])
-        p1 = softmax(sc1)
-        ids1 = rank_order(p1)[:TOP]
-        top1 = int(ids1[0])
-        if len(tests) >= 2:  # real second booking, booking 1 replaced by the step-1 top-1
-            i2 = tests[1]
-            hist = self.history(user, i2)
-            hc = [b["cluster"] for b in hist]
-            for j, b in enumerate(hist):
-                if b["event"] == bk[i1]["event"]:
-                    hc[j] = top1
-            hd = [b["dest"] for b in hist]
-            fields2 = bk[i2]["fields"]
-        else:  # one test booking: same context, history of booking 1 followed by (top-1, its destination)
-            hc = ([b["cluster"] for b in h1] + [top1])[-S:]
-            hd = ([b["dest"] for b in h1] + [bk[i1]["dest"]])[-S:]
-            fields2 = bk[i1]["fields"]
-        sc2, _, _, _ = self.main_score(hc, hd, fields2)
-        p2 = softmax(sc2)
-        ids2 = rank_order(p2)[:TOP]
-        top = merge_top(ids1, p1[ids1], ids2, p2[ids2])
-        truth = sorted({b["cluster"] for b in bk if b["test"]})
-        return {"top": top, "truth": truth, "hits": [c for c in top if c in truth]}
-
     # ---- API ----------------------------------------------------------------------------------
     def meta_json(self) -> dict:
         fields = []
@@ -146,7 +116,7 @@ class Engine:
         tests = [{"index": i, "event": b["event"], "truth": b["cluster"], "n_prior": i,
                   "fields": b["fields"]} for i, b in enumerate(u["bookings"]) if b["test"]]
         return {"user_id": uid, "tag": u["tag"], "cold": u["cold"], "n_total": len(u["bookings"]),
-                "n_test": len(tests), "tests": tests, "user_list": self.user_list(u)}
+                "n_test": len(tests), "tests": tests}
 
     def api_recommend(self, req: dict) -> dict:
         uid = req.get("user_id")
