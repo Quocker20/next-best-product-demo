@@ -1065,51 +1065,6 @@ input:focus, select:focus {
   <!-- PHẦN CHÍNH: KẾT QUẢ, KIẾN TRÚC MÔ HÌNH CHÍNH & ĐỐI CHIẾU BASELINE -->
   <section class="content-stack" id="outputArea">
     
-    <!-- BANNER KẾT QUẢ ĐỐI CHIẾU TỔNG QUAN -->
-    <div class="verdict-card hit" id="verdictBanner">
-      <div class="verdict-target">
-        <div class="verdict-label">Cluster khách thực tế đã chọn</div>
-        <div class="verdict-cluster-row">
-          <span id="actualClusterChipWrap"></span>
-          <span class="verdict-badge hit" id="verdictHitBadge">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            Trong Top 5
-          </span>
-        </div>
-      </div>
-
-      <div class="verdict-rank-bars">
-        <div class="rank-track-row">
-          <span class="rank-track-label" style="color:var(--primary-dark)">Mô hình chính:</span>
-          <div class="rank-track">
-            <div class="rank-track-zone"></div>
-            <i class="rank-track-pin" id="pinMain" style="left:5%;background:var(--primary)"></i>
-          </div>
-          <span class="rank-track-val" id="valMain">#1</span>
-        </div>
-
-        <div class="rank-track-row">
-          <span class="rank-track-label" style="color:#d9a441">Popularity:</span>
-          <div class="rank-track">
-            <div class="rank-track-zone"></div>
-            <i class="rank-track-pin" id="pinPop" style="left:12%;background:#d9a441"></i>
-          </div>
-          <span class="rank-track-val" id="valPop">#3</span>
-        </div>
-
-        <div class="rank-track-row">
-          <span class="rank-track-label" style="color:#9333ea">ItemKNN:</span>
-          <div class="rank-track">
-            <div class="rank-track-zone"></div>
-            <i class="rank-track-pin" id="pinKnn" style="left:40%;background:#9333ea"></i>
-          </div>
-          <span class="rank-track-val" id="valKnn">#18</span>
-        </div>
-      </div>
-    </div>
-
     <!-- KHỐI 1: MÔ HÌNH CHÍNH (MAIN MODEL VIEW) -->
     <div class="arch-card" id="mainModelView">
       <div class="arch-header">
@@ -1572,58 +1527,9 @@ async function pickRandomSample() {
 
 // --- RENDER FUNCTIONS ---
 function renderAll(data) {
-  renderVerdictBanner(data);
   renderArchitectureSvg(data);
   renderTop5Detail(data);
   renderBaselines(data);
-}
-
-/* 1. Verdict Banner */
-function renderVerdictBanner(data) {
-  const truth = data.truth ? data.truth.cluster : null;
-  const banner = $('verdictBanner');
-  const chipWrap = $('actualClusterChipWrap');
-  const badge = $('verdictHitBadge');
-  
-  if (truth === null) {
-    banner.className = 'verdict-card';
-    chipWrap.innerHTML = `<span style="font-size:0.9rem;color:var(--muted)">Chưa nạp</span>`;
-    badge.className = 'verdict-badge';
-    badge.textContent = 'Chưa có nhãn test';
-    $('pinMain').style.display = 'none';
-    $('pinPop').style.display = 'none';
-    $('pinKnn').style.display = 'none';
-    $('valMain').textContent = '-';
-    $('valPop').textContent = '-';
-    $('valKnn').textContent = '-';
-    return;
-  }
-
-  const isHit = data.truth.in_top;
-  banner.className = `verdict-card ${isHit ? 'hit' : 'miss'}`;
-  chipWrap.innerHTML = chip(truth, 'lg') + `<span style="font-weight:700;font-size:1.15rem;margin-left:4px;">Cluster #${truth}</span>`;
-  
-  badge.className = `verdict-badge ${isHit ? 'hit' : 'miss'}`;
-  badge.innerHTML = isHit 
-    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Trong Top 5 (Hạng #${data.truth.rank})`
-    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Ngoài Top 5 (Hạng #${data.truth.rank})`;
-
-  // Update track pins
-  const mainRank = data.truth.rank;
-  const popRank = data.baselines['Popularity'].truth_rank || 100;
-  const knnRank = data.baselines['ItemKNN'].truth_rank || 100;
-
-  $('pinMain').style.display = 'block';
-  $('pinPop').style.display = 'block';
-  $('pinKnn').style.display = 'block';
-
-  $('pinMain').style.left = `${Math.min(100, Math.max(2, mainRank))}%`;
-  $('pinPop').style.left = `${Math.min(100, Math.max(2, popRank))}%`;
-  $('pinKnn').style.left = `${Math.min(100, Math.max(2, knnRank))}%`;
-
-  $('valMain').textContent = `#${mainRank}`;
-  $('valPop').textContent = `#${popRank}`;
-  $('valKnn').textContent = `#${knnRank}`;
 }
 
 /* 2. Interactive SVG Architecture (Exact Stage 3 Layout) */
