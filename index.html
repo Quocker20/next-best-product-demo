@@ -1394,8 +1394,10 @@ let STATE = {
 };
 
 // --- API CLIENT ---
+// relative to the page, so the demo also works under a sub-path such as /demo-nbp/
+const API_BASE = location.pathname.replace(/[^/]*$/, '');
 async function api(path, body) {
-  const res = await fetch(path, {
+  const res = await fetch(API_BASE + path.replace(/^\/+/, ''), {
     method: body ? 'POST' : 'GET',
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined
