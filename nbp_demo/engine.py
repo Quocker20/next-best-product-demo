@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import numpy as np
-import torch
 
 from nbp_demo.features import LEAD_BINS, QUERY_FIELDS, encode
 from nbp_demo.model import QueryModel
@@ -21,7 +20,7 @@ SMALL = {"dest_type", "ci_month", "lead", "stay", "adults", "children", "rooms",
 
 
 def tensor_summary(t, max_samples: int = 16) -> dict:
-    a = np.asarray(t.detach().cpu().numpy() if isinstance(t, torch.Tensor) else t, dtype=float)
+    a = np.asarray(t, dtype=float)
     f = a.flatten()
     return {"shape": list(a.shape), "min": round(float(f.min()), 4), "max": round(float(f.max()), 4),
             "mean": round(float(f.mean()), 4), "std": round(float(f.std()), 4),
@@ -34,9 +33,8 @@ class Engine:
         self.meta = meta
         vz = np.load(root / "checkpoints" / "vocab.npz")
         self.vocab = [vz[f"vocab_{f}"] for f in QUERY_FIELDS]
-        self.model = QueryModel(meta["n_items"], [len(v) + 1 for v in self.vocab], seq_len=S)
-        self.model.load_state_dict(torch.load(root / "checkpoints" / meta["file"], map_location="cpu", weights_only=True))
-        self.model.eval()
+        wz = np.load(root / "checkpoints" / meta["file"])
+        self.model = QueryModel({k: wz[k] for k in wz.files})
         sd = meta["samedest"]
         self.alpha, self.w, self.recency = sd["alpha"], sd["w"], sd["recency"]
         b = np.load(root / "checkpoints" / "baselines.npz")
@@ -52,17 +50,16 @@ class Engine:
         return user["bookings"][:upto][-S:]
 
     def _tensors(self, hist_clusters: list[int], fields: dict[str, int]):
-        seq = np.zeros((1, S), np.int64)
-        seq[0, :len(hist_clusters)] = [c + 1 for c in hist_clusters]
+        seq = np.zeros(S, np.int64)
+        seq[:len(hist_clusters)] = [c + 1 for c in hist_clusters]
         codes = np.array([[fields[f] for f in QUERY_FIELDS]], np.int64)
-        q_idx = torch.from_numpy(encode(codes, self.vocab))
-        return torch.from_numpy(seq), q_idx
+        return seq, encode(codes, self.vocab)[0]
 
     # ---- scoring ------------------------------------------------------------------------------
     def main_score(self, hist_clusters: list[int], hist_dest: list[int], fields: dict[str, int]):
         """(fused score (100,), model probability (100,), sameDest distribution (100,), known dest)."""
         seq, q_idx = self._tensors(hist_clusters, fields)
-        logits = self.model.scores(seq, q_idx).numpy()[0, 1:].astype(np.float64)
+        logits = self.model.scores(seq, q_idx)[1:]
         p = softmax(logits)
         share = same_dest_share(hist_clusters, hist_dest, fields["dest"], self.recency)
         sd_p = same_dest_distribution(share)
@@ -170,6 +167,10 @@ class Engine:
         seq, q_idx = self._tensors(hc, fields)
         t = self.model.trace(seq, q_idx)
         ts = tensor_summary
+        for k in ("history_emb", "query_vec", "combined", "query_hidden", "logits"):
+            t[k] = t[k][None]
+        for k in ("layernorm", "seq_mix", "feat_mix", "chan_mix", "layer1", "layer2"):
+            t[k] = t[k][None, None]
         return {
             "embedding": {"name": "Lớp Embedding",
                           "role": "Ánh xạ chuỗi lịch sử (item_id) và 14 trường tìm kiếm thành các vector không gian ẩn H=64.",

@@ -27,7 +27,7 @@ the model ranks well, but keeps cold users and misses. Do not quote sample numbe
 ## Run
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt   # numpy only; torch is needed just for tools/
 python server.py            # http://127.0.0.1:8765, PORT env var is honoured
 python -m pytest tests      # engine reproduces the research rank of the true cluster for every test booking of the 48 users
 ```
@@ -43,7 +43,7 @@ docker build -t nbp-demo . && docker run -p 8080:8080 nbp-demo
 ```
 
 Render / Railway / Fly: build with `pip install -r requirements.txt`, start with `python -u server.py`
-(CPU torch, about 300 MB RAM).
+(numpy only, no torch).
 
 ## Rebuild the assets
 
@@ -52,3 +52,8 @@ Render / Railway / Fly: build with `pip install -r requirements.txt`, start with
 ```bash
 <research repo>/.venv/Scripts/python.exe tools/build_assets.py --research <research repo>
 ```
+
+## Vercel
+
+Runtime is numpy only (`checkpoints/weights.npz`, exported by `tools/export_weights.py`), so the bundle is a few tens of MB.
+`index.html` is served statically, `/api/*` is rewritten to `api/index.py` (`vercel.json`). No build command, framework preset "Other".

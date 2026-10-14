@@ -131,7 +131,7 @@ np.savez(HERE / "checkpoints/vocab.npz", **{f"vocab_{f}": v for f, v in zip(QUER
 n_items = int(Y.max()) + 1
 sd = json.loads((R / "results/week6_retrain/main_s2024.json").read_text(encoding="utf-8"))["samedest"]
 (HERE / "checkpoints/meta.json").write_text(json.dumps({
-    "label": "SMLP4Rec + query embedding + sameDest (seed 2024)", "file": "query_d0.2_s2024.pth", "n_items": n_items,
+    "label": "SMLP4Rec + query embedding + sameDest (seed 2024)", "file": "weights.npz", "n_items": n_items,
     "samedest": {"alpha": sd["alpha"], "w": sd["w"], "recency": sd["recency"]}, "run": RUN}, indent=1), encoding="utf-8")
 
 y_tr = Y[tr]

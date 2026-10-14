@@ -1,84 +1,78 @@
-"""SMLP4Rec with a query embedding, in plain PyTorch (no RecBole), loadable from the research checkpoints.
+"""SMLP4Rec with a query embedding, inference only, in numpy (no torch at run time).
 
 History = the user's last S bookings (item ids, 0 = padding, right-padded). The current search is one
 extra position S: a learned mask vector plus one embedding per query field. Two passes through the
 same mixer block, the hidden state of the query position is multiplied with the item embedding table.
-Parameter names match the research repo (`nbp.models.smlprec_query.SMLPRECQuery`), so its `best.pth`
-state dict loads with `strict=True`.
+Weights come from `checkpoints/weights.npz`, exported from the research checkpoint by
+`tools/export_weights.py` (parameter names as in the research repo's state dict).
 """
 
 from __future__ import annotations
 
-import torch
-from torch import nn
+from math import erf
 
-EXPANSION = 3
+import numpy as np
 
-
-def _mlp(dim: int) -> nn.Sequential:
-    return nn.Sequential(nn.Linear(dim, EXPANSION * dim, bias=False), nn.GELU(), nn.Dropout(0.0),
-                         nn.Linear(EXPANSION * dim, dim, bias=False), nn.Dropout(0.0))
+_erf = np.frompyfunc(erf, 1, 1)
 
 
-class Mixer(nn.Module):
-    """Channel (c), sequence (h) and hidden (w) MLPs on a LayerNorm-ed (B, 1, S+1, H) tensor, summed."""
-
-    def __init__(self, shape: tuple[int, int, int]) -> None:
-        super().__init__()
-        self.c, self.h, self.w = _mlp(shape[0]), _mlp(shape[1]), _mlp(shape[2])
-        self.norm2 = nn.LayerNorm(shape[2])
-
-    def branches(self, x: torch.Tensor):
-        xn = self.norm2(x)
-        x0 = self.c(xn.transpose(1, 3).contiguous()).transpose(3, 1).contiguous()
-        x1 = self.h(xn.transpose(2, 3).contiguous()).transpose(3, 2).contiguous()
-        x2 = self.w(xn)
-        return xn, x0, x1, x2
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        _, x0, x1, x2 = self.branches(x)
-        return x0 + x1 + x2
+def gelu(x: np.ndarray) -> np.ndarray:
+    return 0.5 * x * (1.0 + _erf(x / np.sqrt(2.0)).astype(np.float64))
 
 
-class QueryModel(nn.Module):
-    def __init__(self, n_items: int, field_sizes: list[int], seq_len: int = 20, hidden: int = 64,
-                 n_layers: int = 2, eps: float = 1e-12) -> None:
-        super().__init__()
+def layer_norm(x: np.ndarray, w: np.ndarray, b: np.ndarray, eps: float) -> np.ndarray:
+    mu = x.mean(-1, keepdims=True)
+    var = ((x - mu) ** 2).mean(-1, keepdims=True)
+    return (x - mu) / np.sqrt(var + eps) * w + b
+
+
+class QueryModel:
+    def __init__(self, weights: dict[str, np.ndarray], n_layers: int = 2) -> None:
+        self.w = {k: np.asarray(v, np.float64) for k, v in weights.items()}
         self.n_layers = n_layers
-        self.item_embedding = nn.Embedding(n_items, hidden, padding_idx=0)
-        self.layers = nn.ModuleList([Mixer((1, seq_len + 1, hidden))])  # one block, reused n_layers times
-        self.LayerNorm = nn.LayerNorm(hidden, eps=eps)
-        self.query_emb = nn.ModuleList([nn.Embedding(n, hidden) for n in field_sizes])
-        self.query_mask = nn.Parameter(torch.zeros(hidden))
+        self.n_fields = sum(k.startswith("query_emb.") for k in self.w)
 
-    def query_vector(self, q_idx: torch.Tensor) -> torch.Tensor:
-        q = self.query_mask.expand(q_idx.shape[0], -1)
-        for j, emb in enumerate(self.query_emb):
-            q = q + emb(q_idx[:, j].long())
+    def query_vector(self, q_idx: np.ndarray) -> np.ndarray:
+        """(F,) embedding indices -> (H,) query vector."""
+        q = self.w["query_mask"].copy()
+        for j in range(self.n_fields):
+            q += self.w[f"query_emb.{j}.weight"][q_idx[j]]
         return q
 
-    @torch.no_grad()
-    def scores(self, seq: torch.Tensor, q_idx: torch.Tensor) -> torch.Tensor:
-        """(B, n_items) logits; column 0 is the padding id (callers mask it)."""
-        h = self.item_embedding(seq)
-        x = torch.cat([h, self.query_vector(q_idx).unsqueeze(1)], dim=1).unsqueeze(1)  # (B, 1, S+1, H)
-        for _ in range(self.n_layers):
-            x = self.layers[0](x)
-        return self.LayerNorm(x[:, 0, -1]) @ self.item_embedding.weight.T
+    def _mixer(self, x: np.ndarray):
+        """x (S+1, H) -> (xn, channel branch, sequence branch, hidden branch)."""
+        w = self.w
+        xn = layer_norm(x, w["layers.0.norm2.weight"], w["layers.0.norm2.bias"], 1e-5)
+        # channel mixing acts on a dimension of size 1: elementwise Linear(1,3) - GELU - Linear(3,1)
+        c1, c2 = w["layers.0.c.0.weight"][:, 0], w["layers.0.c.3.weight"][0]
+        x0 = (gelu(xn[..., None] * c1) * c2).sum(-1)
+        # sequence mixing: MLP over the S+1 positions, for every hidden unit
+        x1 = w["layers.0.h.3.weight"] @ gelu(w["layers.0.h.0.weight"] @ xn)
+        # hidden-unit mixing: MLP over the H features, for every position
+        x2 = gelu(xn @ w["layers.0.w.0.weight"].T) @ w["layers.0.w.3.weight"].T
+        return xn, x0, x1, x2
 
-    @torch.no_grad()
-    def trace(self, seq: torch.Tensor, q_idx: torch.Tensor) -> dict:
-        """Intermediate tensors of one row, for the architecture view of the page."""
-        h = self.item_embedding(seq)
+    def _forward(self, seq: np.ndarray, q_idx: np.ndarray) -> dict:
+        w = self.w
+        h = w["item_embedding.weight"][seq]  # (S, H)
         qv = self.query_vector(q_idx)
-        x_cat = torch.cat([h, qv.unsqueeze(1)], dim=1)
-        x = x_cat.unsqueeze(1)
-        blk = self.layers[0]
-        xn, x0, x1, x2 = blk.branches(x)
+        x_cat = np.concatenate([h, qv[None]], 0)  # (S+1, H)
+        xn, x0, x1, x2 = self._mixer(x_cat)
         y1 = x0 + x1 + x2
-        y2 = blk(y1)
-        out = self.LayerNorm(y2[:, 0, -1])
-        logits = out @ self.item_embedding.weight.T
-        return {"history_emb": h, "query_vec": qv, "combined": x_cat, "tensor": x, "layernorm": xn,
-                "seq_mix": x1, "feat_mix": x0, "chan_mix": x2, "layer1": y1, "layer2": y2,
-                "query_hidden": out, "logits": logits}
+        y2 = sum(self._mixer(y1)[1:])
+        for _ in range(self.n_layers - 2):
+            y2 = sum(self._mixer(y2)[1:])
+        out = layer_norm(y2[-1], w["LayerNorm.weight"], w["LayerNorm.bias"], 1e-12)
+        return {"history_emb": h, "query_vec": qv, "combined": x_cat, "layernorm": xn, "seq_mix": x1,
+                "feat_mix": x0, "chan_mix": x2, "layer1": y1, "layer2": y2, "query_hidden": out,
+                "logits": out @ w["item_embedding.weight"].T}
+
+    def scores(self, seq: np.ndarray, q_idx: np.ndarray) -> np.ndarray:
+        """(n_items,) logits of one row; entry 0 is the padding id (callers drop it)."""
+        return self._forward(seq, q_idx)["logits"]
+
+    def trace(self, seq: np.ndarray, q_idx: np.ndarray) -> dict:
+        """Intermediate tensors of one row, for the architecture view of the page."""
+        t = self._forward(seq, q_idx)
+        t["tensor"] = t["combined"][None, None]
+        return t

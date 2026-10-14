@@ -23,7 +23,15 @@ from nbp_demo.engine import Engine
 ROOT = Path(__file__).resolve().parent
 PAGE = ROOT / "index.html"
 LOCK = threading.Lock()
-ENGINE: Engine
+_ENGINE: Engine | None = None
+
+
+def engine() -> Engine:
+    """Loaded on first use (also by the serverless entry `api/index.py`)."""
+    global _ENGINE
+    if _ENGINE is None:
+        _ENGINE = Engine()
+    return _ENGINE
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -35,11 +43,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802
-        if self.path == "/api/meta":
-            self._send(200, json.dumps(ENGINE.meta_json()).encode(), "application/json")
-        elif self.path == "/healthz":
+        path = self.path.split("?")[0]
+        if path.endswith("/api/meta"):
+            self._send(200, json.dumps(engine().meta_json()).encode(), "application/json")
+        elif path == "/healthz":
             self._send(200, b"ok", "text/plain")
-        elif self.path in ("/", "/index.html"):
+        elif path in ("/", "/index.html"):
             self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
         else:
             self._send(404, b"not found", "text/plain")
@@ -47,7 +56,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         try:
             req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-            fn = {"/api/user": ENGINE.api_user, "/api/recommend": ENGINE.api_recommend}[self.path]
+            path = self.path.split("?")[0]
+            fn = {"/api/user": engine().api_user, "/api/recommend": engine().api_recommend}[path[path.index("/api/"):]]
             with LOCK:
                 out = fn(req)
         except Exception as e:  # shown in the page
@@ -59,12 +69,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    global ENGINE
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8765)))
     ap.add_argument("--host", default=os.environ.get("HOST", "0.0.0.0"))
     a = ap.parse_args()
-    ENGINE = Engine()
+    engine()
     print(f"ready: http://127.0.0.1:{a.port}", flush=True)
     ThreadingHTTPServer((a.host, a.port), Handler).serve_forever()
 

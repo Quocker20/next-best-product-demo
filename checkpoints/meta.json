@@ -1,6 +1,6 @@
 {
  "label": "SMLP4Rec + query embedding + sameDest (seed 2024)",
- "file": "query_d0.2_s2024.pth",
+ "file": "weights.npz",
  "n_items": 101,
  "samedest": {
   "alpha": 0.1,
