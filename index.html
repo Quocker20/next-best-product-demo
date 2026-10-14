@@ -526,6 +526,33 @@ input:focus, select:focus {
 }
 
 /* Top 5 Cards Container below or inside Architecture */
+.result-card {
+  border: 2px solid var(--primary);
+  box-shadow: 0 6px 22px rgba(59,110,165,0.18);
+}
+.result-card::before {
+  content: "";
+  display: block;
+  height: 5px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+.result-hero {
+  border-top: none;
+  background: linear-gradient(180deg, var(--primary-light), #ffffff);
+  padding: 20px 22px;
+}
+.result-hero .top5-detail-header h3 {
+  font-size: 1.25rem;
+  color: var(--primary-dark);
+}
+.result-hero .rec-card {
+  padding: 16px 16px;
+  border-color: var(--primary-border);
+}
+.result-hero .rec-card:first-child {
+  border: 2px solid var(--primary);
+  box-shadow: 0 3px 10px rgba(59,110,165,0.2);
+}
 .top5-detail-section {
   padding: 16px 18px;
   border-top: 1px solid var(--line);
@@ -1065,6 +1092,25 @@ input:focus, select:focus {
   <!-- PHẦN CHÍNH: KẾT QUẢ, KIẾN TRÚC MÔ HÌNH CHÍNH & ĐỐI CHIẾU BASELINE -->
   <section class="content-stack" id="outputArea">
     
+    <!-- KẾT QUẢ CHÍNH: TOP 5 GỢI Ý -->
+    <div class="arch-card result-card">
+    <!-- Khối Output / Công thức & Ranking (Top 5 chi tiết) -->
+    <div class="top5-detail-section result-hero" id="outputRankingBlock">
+      <div class="top5-detail-header">
+        <h3>Top 5 Gợi ý</h3>
+        <button class="btn btn-outline" id="btnOpen100Modal" style="padding:4px 10px;font-size:0.78rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+          </svg>
+          Xem đầy đủ 100 Cluster
+        </button>
+      </div>
+
+      <div class="top5-cards-grid" id="top5CardsGrid"></div>
+      <div id="truthMissAlert" style="margin-top:10px;display:none;"></div>
+    </div>
+    </div>
+
     <!-- KHỐI 1: MÔ HÌNH CHÍNH (MAIN MODEL VIEW) -->
     <div class="arch-card" id="mainModelView">
       <div class="arch-header">
@@ -1084,22 +1130,6 @@ input:focus, select:focus {
       <div class="arch-svg-container" id="archSvgWrap">
         <!-- SVG được render động từ renderArchitectureSvg() -->
         <svg id="archSvg" viewBox="0 0 1152 440" width="1152" height="440" style="font-family:'Segoe UI', Arial, sans-serif;"></svg>
-      </div>
-
-      <!-- Khối Output / Công thức & Ranking (Top 5 chi tiết) -->
-      <div class="top5-detail-section" id="outputRankingBlock">
-        <div class="top5-detail-header">
-          <h3>Top 5 Gợi ý</h3>
-          <button class="btn btn-outline" id="btnOpen100Modal" style="padding:4px 10px;font-size:0.78rem;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-            </svg>
-            Xem đầy đủ 100 Cluster
-          </button>
-        </div>
-
-        <div class="top5-cards-grid" id="top5CardsGrid"></div>
-        <div id="truthMissAlert" style="margin-top:10px;display:none;"></div>
       </div>
     </div>
 
