@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <title>Demo Gợi Ý Hạng Phòng Kế Tiếp (Next-Best Product Recommendation)</title>
 <style>
 :root {
@@ -886,16 +888,20 @@ input:focus, select:focus {
   font-size: 0.86rem;
 }
 .inspect-formula {
-  background: #1e293b;
-  color: #38bdf8;
-  padding: 6px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--primary);
+  color: var(--ink);
+  padding: 10px 16px;
   border-radius: var(--radius-sm);
-  font-family: var(--mono);
-  font-size: 0.84rem;
+  font-size: 1.02rem;
   margin: 6px 0 0;
-  display: inline-block;
-  font-weight: 600;
+  display: block;
+  overflow-x: auto;
+  text-align: center;
 }
+.inspect-stat-val .katex, .inspect-stat-label .katex { font-size: 1em; text-transform: none; letter-spacing: 0; }
+.inspect-sample-chip .num { font-variant-numeric: tabular-nums; }
 .inspect-tensor-card {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -1972,10 +1978,36 @@ function filterAndRender100Ranking() {
   }).join('');
 }
 
+// --- MATH TYPESETTING (KaTeX) ---
+function texRender(tex, el, display) {
+  if (window.katex) {
+    try { window.katex.render(tex, el, {displayMode: !!display, throwOnError: false}); return; } catch (e) {}
+  }
+  el.textContent = tex;
+}
+function typesetAll(root) {
+  root.querySelectorAll('[data-tex]').forEach(el => texRender(el.dataset.tex, el, el.dataset.display === '1'));
+}
+// number in academic notation: true minus sign, scientific notation as m 	imes 10^{e}
+function texNum(v) {
+  const x = Number(v);
+  if (!isFinite(x)) return String(v);
+  const a = Math.abs(x);
+  let str;
+  if (a !== 0 && (a < 1e-3 || a >= 1e5)) {
+    const [m, e] = x.toExponential(3).split('e');
+    str = `${parseFloat(m)}\\times 10^{${parseInt(e, 10)}}`;
+  } else {
+    str = String(parseFloat(x.toPrecision(5)));
+  }
+  return str;
+}
+function mathSpan(tex, cls) { return `<span class="${cls || ''}" data-tex="${tex.replace(/"/g, '&quot;')}"></span>`; }
+
 // --- MODEL INTROSPECTION INSPECTOR ---
 function renderTensorCard(title, t) {
   if (!t || !t.shape) return '';
-  const shapeStr = `[${t.shape.join(', ')}]`;
+  const shapeTex = `\\in \\mathbb{R}^{${t.shape.join(' \\times ')}}`;
   const samples = t.sample || [];
   const maxAbs = Math.max(...samples.map(Math.abs), 0.0001);
 
@@ -1994,20 +2026,20 @@ function renderTensorCard(title, t) {
   }).join('');
 
   const sampleChipsHtml = samples.map((v, i) => 
-    `<span class="inspect-sample-chip" title="Chiều [${i}]">${v > 0 ? '+' : ''}${v}</span>`
+    `<span class="inspect-sample-chip" title="Chiều ${i + 1}">${mathSpan(texNum(v))}</span>`
   ).join('');
 
   return `<div class="inspect-tensor-card">
     <div class="inspect-tensor-header">
       <div style="font-weight:700;font-size:0.92rem;color:var(--ink);">${title}</div>
-      <span class="cluster-chip sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-family:var(--mono);">Shape: ${shapeStr}</span>
+      <span class="cluster-chip sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-family:var(--mono);">${mathSpan(shapeTex)}</span>
     </div>
     <div class="inspect-stats-grid">
-      <div class="inspect-stat-box"><div class="inspect-stat-label">Min</div><div class="inspect-stat-val" style="color:#ea580c;">${t.min}</div></div>
-      <div class="inspect-stat-box"><div class="inspect-stat-label">Max</div><div class="inspect-stat-val" style="color:#16a34a;">${t.max}</div></div>
-      <div class="inspect-stat-box"><div class="inspect-stat-label">Mean (μ)</div><div class="inspect-stat-val">${t.mean}</div></div>
-      <div class="inspect-stat-box"><div class="inspect-stat-label">Std (σ)</div><div class="inspect-stat-val">${t.std}</div></div>
-      <div class="inspect-stat-box"><div class="inspect-stat-label">L2 Norm</div><div class="inspect-stat-val" style="color:var(--primary);">${t.l2_norm}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\min')}</div><div class="inspect-stat-val" style="color:#ea580c;">${mathSpan(texNum(t.min))}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\max')}</div><div class="inspect-stat-val" style="color:#16a34a;">${mathSpan(texNum(t.max))}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\mu')}</div><div class="inspect-stat-val">${mathSpan(texNum(t.mean))}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\sigma')}</div><div class="inspect-stat-val">${mathSpan(texNum(t.std))}</div></div>
+      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\lVert \\cdot \\rVert_2')}</div><div class="inspect-stat-val" style="color:var(--primary);">${mathSpan(texNum(t.l2_norm))}</div></div>
     </div>
     <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px;">Phân phối 16 giá trị đầu (Sparkline / Âm &middot; Dương):</div>
     <div class="inspect-bars-container">${barsHtml}</div>
@@ -2030,7 +2062,7 @@ function inspectLayer(layerKey) {
   let bodyHtml = `<div class="inspect-role-card">
     <div style="font-weight:700;color:var(--primary);margin-bottom:4px;">Vai trò kiến trúc trong thuật toán:</div>
     <div>${act.role}</div>
-    ${act.formula ? `<div style="margin-top:8px;"><div style="font-size:0.75rem;color:var(--muted);font-weight:700;">Công thức toán học:</div><div class="inspect-formula">${act.formula}</div></div>` : ''}
+    ${act.formula ? `<div style="margin-top:8px;"><div style="font-size:0.75rem;color:var(--muted);font-weight:700;">Công thức toán học:</div><div class="inspect-formula" data-tex="${act.formula.replace(/"/g, '&quot;')}" data-display="1"></div></div>` : ''}
   </div>`;
 
   if (layerKey === 'embedding') {
@@ -2061,7 +2093,7 @@ function inspectLayer(layerKey) {
         <span class="cluster-chip sm" style="background:${act.active ? '#dcfce7' : '#f1f5f9'};color:${act.active ? '#166534' : '#64748b'};">
           ${act.active ? 'Đã kích hoạt (Điểm đến có trong lịch sử)' : 'Chưa kích hoạt (Điểm đến mới)'}
         </span>
-        <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">Trọng số w = ${act.weight_w}</span>
+        <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">${mathSpan('w = ' + texNum(act.weight_w))}</span>
       </div>
     </div>`;
     bodyHtml += renderTensorCard('Phân phối xác suất sameDest trên 100 cụm', act.distribution);
@@ -2069,14 +2101,16 @@ function inspectLayer(layerKey) {
     bodyHtml += `<div class="inspect-tensor-card">
       <div style="font-weight:700;margin-bottom:6px;">Tham số dung hợp tối ưu trên tập Validation:</div>
       <div style="display:flex;gap:10px;margin-bottom:10px;">
-        <span class="cluster-chip sm" style="background:#e0f2fe;color:#0369a1;">Alpha làm mịn: ${act.alpha}</span>
-        <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">Trọng số w: ${act.weight_w}</span>
+        <span class="cluster-chip sm" style="background:#e0f2fe;color:#0369a1;">Làm mịn ${mathSpan('\\alpha = ' + texNum(act.alpha))}</span>
+        <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">Trọng số ${mathSpan('w = ' + texNum(act.weight_w))}</span>
       </div>
     </div>`;
     bodyHtml += renderTensorCard('Log-Score sau dung hợp (Trước Softmax cuối)', act.final_scores);
   }
 
   $('inspectModalBody').innerHTML = bodyHtml;
+  const typeset = () => typesetAll($('inspectModalBody'));
+  if (window.katex) typeset(); else window.addEventListener('load', typeset, {once: true});
   $('modalInspector').classList.add('open');
 }
 
