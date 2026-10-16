@@ -3,8 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <title>Demo Gợi Ý Hạng Phòng Kế Tiếp (Next-Best Product Recommendation)</title>
 <style>
 :root {
@@ -878,106 +876,78 @@ input:focus, select:focus {
   display: flex;
 }
 
-/* Inspector Modal Styles */
-.inspect-role-card {
-  background: var(--surface-alt);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  font-size: 0.86rem;
-}
-.inspect-formula {
+/* Inspector: hoạt ảnh minh hoạ từng khối của mô hình */
+.inspect-stage {
   background: #f8fafc;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--primary);
-  color: var(--ink);
-  padding: 10px 16px;
   border-radius: var(--radius-sm);
-  font-size: 1.02rem;
-  margin: 6px 0 0;
-  display: block;
-  overflow-x: auto;
-  text-align: center;
-}
-.inspect-stat-val .katex, .inspect-stat-label .katex { font-size: 1em; text-transform: none; letter-spacing: 0; }
-.inspect-sample-chip .num { font-variant-numeric: tabular-nums; }
-.inspect-tensor-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 14px 16px;
+  padding: 8px;
   margin-bottom: 14px;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-.inspect-tensor-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  gap: 10px;
-}
-.inspect-stats-grid {
+.anim-svg { width: 100%; height: auto; display: block; }
+.anim-svg text { font-family: inherit; }
+.inspect-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: st;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 8px;
-  margin-bottom: 12px;
 }
-.inspect-stat-box {
-  background: #f8fafc;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 6px 10px;
-  text-align: center;
-}
-.inspect-stat-label {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.inspect-stat-val {
-  font-size: 0.95rem;
-  font-family: var(--mono);
-  font-weight: 700;
+.inspect-steps li {
+  counter-increment: st;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.9rem;
   color: var(--ink);
-  margin-top: 2px;
+  line-height: 1.45;
 }
-.inspect-bars-container {
-  display: flex;
-  align-items: center;
-  height: 52px;
-  gap: 3px;
-  background: #f8fafc;
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid var(--line);
-  margin-bottom: 10px;
-  overflow-x: auto;
-}
-.inspect-bar-col {
-  flex: 1;
-  min-width: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-.inspect-sample-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-family: var(--mono);
+.inspect-steps li::before {
+  content: counter(st);
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
   font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.inspect-sample-chip {
-  background: #f1f5f9;
-  border: 1px solid var(--line2);
-  padding: 2px 7px;
-  border-radius: 4px;
-  color: #334155;
+.inspect-note {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+.inspect-note.on { background: #dcfce7; color: #166534; }
+.inspect-note.off { background: #f1f5f9; color: #475569; }
+
+.anim-svg .cell { animation: cellPulse 2.4s ease-in-out infinite; animation-delay: var(--d, 0s); }
+.anim-svg .flow { stroke-dasharray: 6 6; animation: flowDash 0.9s linear infinite; }
+.anim-svg .grow, .anim-svg .settle, .anim-svg .slide, .anim-svg .bar-static {
+  transform-box: fill-box;
+}
+.anim-svg .grow { transform-origin: 50% 100%; animation: growUp 3s ease-in-out infinite; animation-delay: var(--d, 0s); }
+.anim-svg .settle, .anim-svg .bar-static { transform-origin: 50% 50%; }
+.anim-svg .settle { transform: scaleY(var(--s)); animation: settleDown 3s ease-in-out infinite; }
+.anim-svg .bar-static { transform: scaleY(var(--s)); }
+.anim-svg .slide { animation: slideDepth 2.6s ease-in-out infinite; }
+.anim-svg .glow { animation: glowPulse 1.6s ease-in-out infinite; }
+.anim-svg .dim { opacity: 0.35; animation: none; }
+
+@keyframes cellPulse { 0%, 100% { opacity: 0.35; } 40% { opacity: 1; } }
+@keyframes flowDash { to { stroke-dashoffset: -12; } }
+@keyframes growUp { 0% { transform: scaleY(0.04); } 45%, 85% { transform: scaleY(1); } 100% { transform: scaleY(0.04); } }
+@keyframes settleDown { 0%, 15% { transform: scaleY(var(--s)); } 55%, 90% { transform: scaleY(1); } 100% { transform: scaleY(var(--s)); } }
+@keyframes slideDepth { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, -24px); } }
+@keyframes glowPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .anim-svg * { animation: none !important; }
 }
 </style>
 </head>
@@ -1978,139 +1948,262 @@ function filterAndRender100Ranking() {
   }).join('');
 }
 
-// --- MATH TYPESETTING (KaTeX) ---
-function texRender(tex, el, display) {
-  if (window.katex) {
-    try { window.katex.render(tex, el, {displayMode: !!display, throwOnError: false}); return; } catch (e) {}
+// --- MODEL BLOCK ANIMATIONS (inspector) ---
+const AN = {blue: '#3b6ea5', blueL: '#dbeafe', orange: '#ea580c', orangeL: '#ffedd5', green: '#16a34a', gray: '#94a3b8', grayL: '#e2e8f0', ink: '#1f2937'};
+
+const aText = (x, y, str, o = {}) =>
+  `<text x="${x}" y="${y}" font-size="${o.size || 13}" fill="${o.fill || AN.ink}" text-anchor="${o.anchor || 'middle'}" font-weight="${o.weight || 500}">${str}</text>`;
+const aChip = (x, y, w, h, str, fill, stroke) =>
+  `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>` +
+  aText(x + w / 2, y + h / 2 + 4, str, {size: 12, weight: 600});
+const aArrow = (x1, y1, x2, y2, color = AN.gray) =>
+  `<line class="flow" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2"/>`;
+const aDot = (path, color, dur = 2.2, begin = 0) =>
+  `<circle r="5" fill="${color}"><animateMotion dur="${dur}s" begin="${begin}s" repeatCount="indefinite" path="${path}"/></circle>`;
+// column of n small cells that light up one after another
+const aVec = (x, y, n, color, d = 0) => {
+  let s = '';
+  for (let k = 0; k < n; k++) {
+    s += `<rect class="cell" style="--d:${(d * 0.25 + k * 0.12).toFixed(2)}s" x="${x}" y="${y + k * 9}" width="14" height="7" rx="1.5" fill="${color}"/>`;
   }
-  el.textContent = tex;
-}
-function typesetAll(root) {
-  root.querySelectorAll('[data-tex]').forEach(el => texRender(el.dataset.tex, el, el.dataset.display === '1'));
-}
-// number in academic notation: true minus sign, scientific notation as m 	imes 10^{e}
-function texNum(v) {
-  const x = Number(v);
-  if (!isFinite(x)) return String(v);
-  const a = Math.abs(x);
-  let str;
-  if (a !== 0 && (a < 1e-3 || a >= 1e5)) {
-    const [m, e] = x.toExponential(3).split('e');
-    str = `${parseFloat(m)}\\times 10^{${parseInt(e, 10)}}`;
-  } else {
-    str = String(parseFloat(x.toPrecision(5)));
+  return s;
+};
+// deterministic pseudo-random in [0,1) so every render looks the same
+const aRand = (i) => { const v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+const aBars = (x, base, heights, colors, w, gap, delayStep = 0.12) =>
+  heights.map((h, i) => h <= 0 ? '' :
+    `<rect class="grow" style="--d:${(i * delayStep).toFixed(2)}s" x="${x + i * (w + gap)}" y="${base - h}" width="${w}" height="${h}" rx="2" fill="${Array.isArray(colors) ? colors[i] : colors}"/>`).join('');
+
+const ANIM = {
+  embedding() {
+    let s = aText(160, 12, 'Lịch sử đặt phòng', {size: 12, fill: AN.blue, weight: 700}) +
+            aText(500, 12, 'Trường tìm kiếm hiện tại', {size: 12, fill: AN.orange, weight: 700});
+    ['Lượt 1', 'Lượt 2', '…', 'Lượt L'].forEach((l, i) => {
+      const x = 20 + i * 72;
+      s += aChip(x, 20, 64, 24, l, AN.blueL, AN.blue) + aArrow(x + 32, 46, x + 32, 66, AN.blue) + aVec(x + 25, 70, 6, AN.blue, i);
+    });
+    s += aText(160, 138, 'mỗi lượt → một vector', {size: 12, fill: AN.gray});
+    ['Điểm đến', 'Ngày', 'Số khách', '…'].forEach((l, i) => {
+      const x = 340 + i * 72;
+      s += aChip(x, 20, 64, 24, l, AN.orangeL, AN.orange) + aArrow(x + 32, 46, 500, 64, AN.orange);
+    });
+    s += `<circle cx="500" cy="74" r="10" fill="#fff" stroke="${AN.orange}" stroke-width="1.6"/>` + aText(500, 79, '+', {size: 15, weight: 700, fill: AN.orange}) +
+         aArrow(500, 86, 500, 98, AN.orange) + aVec(493, 102, 5, AN.orange, 1) + aText(500, 164, '14 trường → một query vector', {size: 12, fill: AN.gray});
+    s += aText(320, 190, 'Ghép thành một chuỗi vector đưa vào mô hình', {size: 13, weight: 700});
+    for (let k = 0; k < 21; k++) {
+      const x = 89 + k * 22, c = k < 20 ? AN.blue : AN.orange;
+      for (let r = 0; r < 3; r++) s += `<rect class="cell" style="--d:${(k * 0.1 + r * 0.05).toFixed(2)}s" x="${x}" y="${200 + r * 9}" width="14" height="7" rx="1.5" fill="${c}"/>`;
+    }
+    return s;
+  },
+
+  tensor3d() {
+    let s = aText(120, 38, 'Bảng: vị trí × đơn vị ẩn', {size: 12, fill: AN.gray});
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 10; c++) {
+      s += `<rect class="cell" style="--d:${((r + c) * 0.08).toFixed(2)}s" x="${30 + c * 18}" y="${60 + r * 14}" width="16" height="12" rx="1.5" fill="${AN.blue}"/>`;
+    }
+    s += aArrow(232, 105, 312, 105, AN.blue);
+    const fx = 345, fy = 90, fw = 120, fh = 80, ox = 30, oy = -24;
+    s += `<polygon points="${fx},${fy} ${fx + ox},${fy + oy} ${fx + fw + ox},${fy + oy} ${fx + fw},${fy}" fill="#f1f5f9" stroke="${AN.gray}" stroke-width="1.4"/>` +
+         `<polygon points="${fx + fw},${fy} ${fx + fw + ox},${fy + oy} ${fx + fw + ox},${fy + fh + oy} ${fx + fw},${fy + fh}" fill="#e2e8f0" stroke="${AN.gray}" stroke-width="1.4"/>` +
+         `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="#f1f5f9" stroke="${AN.gray}" stroke-width="1.4"/>`;
+    for (let i = 1; i < 4; i++) s += `<line x1="${fx + i * 30}" y1="${fy}" x2="${fx + i * 30}" y2="${fy + fh}" stroke="${AN.grayL}"/><line x1="${fx}" y1="${fy + i * 20}" x2="${fx + fw}" y2="${fy + i * 20}" stroke="${AN.grayL}"/>`;
+    s += `<rect class="slide" x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="${AN.blue}" fill-opacity="0.35" stroke="${AN.blue}" stroke-width="1.6"/>`;
+    s += aText(fx + fw / 2, fy + fh + 22, 'kênh', {size: 12, fill: AN.gray}) +
+         aText(fx + fw / 2 + ox, fy + oy - 8, 'đơn vị ẩn', {size: 12, fill: AN.gray}) +
+         `<g transform="rotate(-90 ${fx - 12} ${fy + fh / 2})">${aText(fx - 12, fy + fh / 2 + 4, 'vị trí chuỗi', {size: 12, fill: AN.gray})}</g>` +
+         aText(fx + fw / 2 + 20, 222, 'Thêm hai chiều batch và kênh (đều = 1)', {size: 12, fill: AN.gray});
+    return s;
+  },
+
+  layernorm() {
+    const sc = [1.8, 0.4, 1.2, 0.3, 1.6, 0.8, 1.9, 0.5, 1.1, 0.35, 1.5, 0.7];
+    let s = aText(155, 34, 'Trước', {size: 13, weight: 700, fill: AN.orange}) + aText(482, 34, 'Sau', {size: 13, weight: 700, fill: AN.blue});
+    sc.forEach((v, i) => {
+      s += `<rect class="bar-static" style="--s:${v}" x="${23 + i * 22}" y="100" width="14" height="60" rx="2" fill="${AN.orange}"/>`;
+      s += `<rect class="settle" style="--s:${v}" x="${350 + i * 22}" y="100" width="14" height="60" rx="2" fill="${AN.blue}"/>`;
+    });
+    s += `<line x1="15" y1="130" x2="295" y2="130" stroke="${AN.gray}" stroke-dasharray="3 3"/><line x1="342" y1="130" x2="622" y2="130" stroke="${AN.gray}" stroke-dasharray="3 3"/>`;
+    s += aArrow(300, 130, 338, 130, AN.gray);
+    s += aText(155, 205, 'giá trị lệch, to nhỏ khác nhau', {size: 12, fill: AN.gray}) + aText(482, 205, 'cùng thang đo, quanh mức trung bình', {size: 12, fill: AN.gray});
+    return s;
+  },
+
+  seq_mix() {
+    const cw = 50, gap = 8, x0 = 59, y = 130, cols = 9;
+    const cx = i => x0 + i * (cw + gap) + cw / 2;
+    let s = aText(320, 24, 'Một đơn vị ẩn, qua các vị trí trong chuỗi', {size: 12, fill: AN.gray});
+    for (let i = 0; i < cols; i++) {
+      const q = i === cols - 1;
+      s += `<rect class="cell" style="--d:${(i * 0.15).toFixed(2)}s" x="${x0 + i * (cw + gap)}" y="${y}" width="${cw}" height="30" rx="4" fill="${q ? AN.orange : AN.blue}"/>`;
+    }
+    for (let i = 0; i < cols - 1; i++) {
+      const d = cx(cols - 1) - cx(i), h = 14 + d * 0.16;
+      s += `<path class="flow" d="M ${cx(i)} ${y} Q ${(cx(i) + cx(cols - 1)) / 2} ${y - h * 1.6} ${cx(cols - 1)} ${y}" fill="none" stroke="${AN.orange}" stroke-width="1.6" opacity="0.8"/>`;
+    }
+    [[0, 3], [1, 5], [2, 6]].forEach(([a, b]) => {
+      s += `<path class="flow" d="M ${cx(a)} ${y + 30} Q ${(cx(a) + cx(b)) / 2} ${y + 30 + (cx(b) - cx(a)) * 0.22} ${cx(b)} ${y + 30}" fill="none" stroke="${AN.blue}" stroke-width="1.6" opacity="0.8"/>`;
+    });
+    s += aText(x0 + 27, 190, 'lượt cũ', {size: 12, fill: AN.blue}) + aText(cx(cols - 1), 190, 'query', {size: 12, fill: AN.orange, weight: 700}) +
+         aText(320, 232, 'Các lượt đặt và query “nhìn” lẫn nhau để biết lượt nào liên quan', {size: 12, fill: AN.gray});
+    return s;
+  },
+
+  feat_mix() {
+    let s = aText(165, 32, 'Mọi ô trong bảng', {size: 12, fill: AN.gray});
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 9; c++) {
+      s += `<rect class="cell" style="--d:${(aRand(r * 9 + c) * 2.4).toFixed(2)}s" x="${35 + c * 29}" y="${50 + r * 21}" width="24" height="16" rx="3" fill="${AN.blue}"/>`;
+    }
+    s += `<line x1="288" y1="113" x2="372" y2="113" stroke="${AN.gray}" stroke-dasharray="3 3"/>`;
+    s += aText(490, 32, 'Mỗi ô được biến đổi riêng', {size: 12, fill: AN.gray});
+    const dots = [[395, 113], [490, 78], [490, 113], [490, 148], [585, 113]];
+    [1, 2, 3].forEach(i => { s += aArrow(407, 113, 478, dots[i][1], AN.blue) + aArrow(502, dots[i][1], 573, 113, AN.blue); });
+    dots.forEach(([x, y], i) => { s += `<circle class="glow" style="animation-delay:${i === 0 || i === 4 ? 0 : 0.5}s" cx="${x}" cy="${y}" r="12" fill="${i === 0 || i === 4 ? AN.orange : AN.blue}"/>`; });
+    s += aText(395, 180, '1 giá trị', {size: 12, fill: AN.gray}) + aText(490, 180, 'mở ra 3', {size: 12, fill: AN.gray}) + aText(585, 180, 'gộp lại 1', {size: 12, fill: AN.gray}) +
+         aText(320, 228, 'Các ô không trao đổi với nhau (đặc trưng chỉ có một chiều: cluster ID)', {size: 12, fill: AN.gray});
+    return s;
+  },
+
+  chan_mix() {
+    const cols = [[100, 8, 24, 38], [320, 6, 30, 52], [540, 8, 24, 38]];
+    const pts = cols.map(([x, n, gap, y0]) => Array.from({length: n}, (_, k) => [x, y0 + k * gap]));
+    let s = '';
+    [[0, 1], [1, 2]].forEach(([a, b]) => pts[a].forEach(p => pts[b].forEach(q => {
+      s += `<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="${AN.gray}" stroke-width="1" opacity="0.22"/>`;
+    })));
+    [[0, 1, 0, 1], [0, 1, 5, 4], [0, 1, 7, 3], [1, 2, 2, 6], [1, 2, 4, 1], [1, 2, 5, 7]].forEach(([a, b, i, j], n) => {
+      s += `<line class="flow" style="animation-delay:${n * 0.15}s" x1="${pts[a][i][0]}" y1="${pts[a][i][1]}" x2="${pts[b][j][0]}" y2="${pts[b][j][1]}" stroke="${AN.blue}" stroke-width="1.8"/>`;
+    });
+    pts.forEach((col, ci) => col.forEach(([x, y], k) => {
+      s += `<circle class="cell" style="--d:${(ci * 0.5 + k * 0.1).toFixed(2)}s" cx="${x}" cy="${y}" r="8" fill="${ci === 1 ? AN.orange : AN.blue}"/>`;
+    }));
+    s += aText(100, 240, 'các đơn vị ẩn của một vị trí', {size: 12, fill: AN.gray}) + aText(320, 240, 'pha trộn lẫn nhau', {size: 12, fill: AN.gray}) + aText(540, 240, 'đặc trưng mới', {size: 12, fill: AN.gray});
+    return s;
+  },
+
+  merge() {
+    const br = [['Sequence mixing', 40], ['Feature mixing', 100], ['Channel mixing', 160]];
+    let s = '';
+    br.forEach(([l, y], i) => {
+      s += aChip(20, y, 140, 40, l, AN.blueL, AN.blue) + `<path class="flow" d="M 160 ${y + 20} L 240 125" fill="none" stroke="${AN.gray}" stroke-width="2"/>` +
+           aDot(`M 160 ${y + 20} L 240 125`, AN.blue, 2.4, i * 0.4);
+    });
+    s += `<circle cx="256" cy="125" r="16" fill="#fff" stroke="${AN.ink}" stroke-width="1.6"/>` + aText(256, 132, '+', {size: 20, weight: 700});
+    s += aArrow(272, 125, 322, 125, AN.blue) + aDot('M 272 125 L 322 125', AN.blue, 1.2);
+    s += aChip(324, 100, 120, 50, 'Kết quả tầng 1', '#fff', AN.ink);
+    s += aArrow(446, 125, 494, 125, AN.blue) + aDot('M 446 125 L 494 125', AN.blue, 1.2, 0.3);
+    s += `<rect x="496" y="100" width="124" height="50" rx="5" fill="${AN.blueL}" stroke="${AN.blue}" stroke-width="1.6" stroke-dasharray="5 3"/>` +
+         aText(558, 121, 'Lặp lại cả khối', {size: 12, weight: 700}) + aText(558, 139, '(tầng 2)', {size: 12});
+    s += aText(320, 222, 'Ba nhánh được cộng lại, rồi cả khối Mixer chạy thêm một lần nữa', {size: 12, fill: AN.gray});
+    return s;
+  },
+
+  output() {
+    let s = '';
+    for (let k = 0; k < 8; k++) {
+      const q = k === 7;
+      s += `<rect class="${q ? 'glow' : 'cell'}" style="--d:${(k * 0.12).toFixed(2)}s" x="40" y="${40 + k * 20}" width="36" height="16" rx="3" fill="${q ? AN.orange : AN.blue}"/>`;
+    }
+    s += aText(58, 228, 'chỉ lấy vị trí query', {size: 12, fill: AN.orange, weight: 700});
+    s += aArrow(84, 188, 148, 125, AN.orange) + aChip(150, 100, 100, 50, 'Chuẩn hóa', '#fff', AN.ink);
+    s += aArrow(252, 125, 298, 125, AN.blue) + aChip(300, 100, 110, 50, 'So khớp 100 cluster', '#fff', AN.ink);
+    s += aArrow(412, 125, 448, 125, AN.blue);
+    const h = [30, 22, 48, 95, 26, 38, 18, 80, 24, 34, 20, 60], top = new Set([3, 7, 11, 2, 5]);
+    s += aBars(452, 200, h, h.map((_, i) => top.has(i) ? AN.green : AN.gray), 10, 4, 0.08);
+    s += aText(536, 222, 'điểm → xác suất mỗi cluster (minh hoạ)', {size: 11, fill: AN.gray});
+    return s;
+  },
+
+  samedest() {
+    const active = true; // minh hoạ cơ chế đầy đủ; trạng thái thật của lần chạy hiện ở ghi chú bên dưới
+    const same = new Set([1, 4, 6]);
+    let s = aText(190, 28, 'Lịch sử đặt (cũ → mới)', {size: 12, fill: AN.gray}) + aText(540, 28, 'Cộng dồn theo cluster', {size: 12, fill: AN.gray});
+    for (let i = 0; i < 8; i++) {
+      const sz = 18 + i * 3, x = 30 + i * 46, y = 110 - sz, on = same.has(i) && active;
+      s += `<rect class="${on ? 'glow' : ''}" x="${x}" y="${y}" width="${sz}" height="${sz}" rx="4" fill="${same.has(i) ? (active ? AN.orange : AN.gray) : AN.grayL}" stroke="${same.has(i) ? (active ? '#c2410c' : AN.gray) : AN.gray}" stroke-width="1.2"/>`;
+    }
+    s += aText(190, 134, active ? 'ô cam: cùng điểm đến với query' : 'không lượt nào trùng điểm đến', {size: 12, fill: active ? AN.orange : AN.gray, weight: 700});
+    if (active) {
+      [[1, 0], [4, 1], [6, 2]].forEach(([i, b], n) => {
+        const sz = 18 + i * 3, sx = 30 + i * 46 + sz / 2, sy = 110;
+        const tx = 480 + b * 30 + 10;
+        const path = `M ${sx} ${sy} C ${sx} 170 ${tx} 130 ${tx} 190`;
+        s += `<path class="flow" d="${path}" fill="none" stroke="${AN.orange}" stroke-width="1.6" opacity="0.7"/>` + aDot(path, AN.orange, 2.6, n * 0.5);
+      });
+    }
+    s += aBars(480, 215, active ? [20, 46, 82, 0, 0] : [], AN.orange, 20, 10, 0.3);
+    s += `<line x1="470" y1="215" x2="620" y2="215" stroke="${AN.gray}"/>`;
+    s += aText(320, 238, 'Đặt càng gần đây → đóng góp càng lớn', {size: 12, fill: AN.gray});
+    return s;
+  },
+
+  fusion() {
+    let s = aText(90, 40, 'Điểm mô hình', {size: 12, fill: AN.blue, weight: 700}) + aText(250, 40, 'Điểm sameDest', {size: 12, fill: AN.orange, weight: 700}) +
+            aText(250, 56, '× trọng số w', {size: 12, fill: AN.orange});
+    s += aBars(30, 190, [40, 90, 30, 70, 20, 50], AN.blue, 14, 6, 0.1);
+    s += aBars(190, 190, [10, 4, 60, 6, 3, 35], AN.orange, 14, 6, 0.1);
+    s += `<line x1="20" y1="190" x2="130" y2="190" stroke="${AN.gray}"/><line x1="180" y1="190" x2="290" y2="190" stroke="${AN.gray}"/><line x1="440" y1="190" x2="610" y2="190" stroke="${AN.gray}"/>`;
+    s += aArrow(134, 130, 318, 130, AN.gray).replace('stroke-dasharray', 'stroke-dasharray') + `<circle cx="338" cy="130" r="14" fill="#fff" stroke="${AN.ink}" stroke-width="1.6"/>` + aText(338, 137, '+', {size: 19, weight: 700});
+    s += aArrow(354, 130, 424, 130, AN.gray) + aDot('M 134 130 L 324 130', AN.blue, 2.2) + aDot('M 292 150 L 324 134', AN.orange, 1.2) + aDot('M 352 130 L 424 130', AN.green, 1.4, 0.4);
+    const h = [50, 90, 88, 75, 20, 85], top = [true, true, true, true, false, true];
+    s += aBars(450, 190, h, h.map((_, i) => top[i] ? AN.green : AN.gray), 18, 8, 0.1);
+    s += aText(530, 40, 'Điểm hợp nhất', {size: 12, fill: AN.green, weight: 700}) + aText(530, 56, 'xanh lá = Top 5', {size: 12, fill: AN.green});
+    s += aText(75, 210, 'p(model)', {size: 12, fill: AN.gray}) + aText(235, 210, 'p(sameDest)', {size: 12, fill: AN.gray}) + aText(525, 210, 'xếp hạng cuối', {size: 12, fill: AN.gray});
+    s += aText(320, 238, 'Cộng ở thang log rồi xếp hạng (minh hoạ độ cao)', {size: 11, fill: AN.gray});
+    return s;
   }
-  return str;
-}
-function mathSpan(tex, cls) { return `<span class="${cls || ''}" data-tex="${tex.replace(/"/g, '&quot;')}"></span>`; }
+};
 
-// --- MODEL INTROSPECTION INSPECTOR ---
-function renderTensorCard(title, t) {
-  if (!t || !t.shape) return '';
-  const shapeTex = `\\in \\mathbb{R}^{${t.shape.join(' \\times ')}}`;
-  const samples = t.sample || [];
-  const maxAbs = Math.max(...samples.map(Math.abs), 0.0001);
-
-  const barsHtml = samples.map(val => {
-    const isPos = val >= 0;
-    const heightPct = Math.min(100, Math.max(8, (Math.abs(val) / maxAbs) * 100));
-    return `<div class="inspect-bar-col" title="Giá trị: ${val}">
-      <div style="flex:1;display:flex;align-items:flex-end;">
-        ${isPos ? `<div style="width:100%;height:${heightPct/2}%;background:var(--primary);border-radius:2px 2px 0 0;"></div>` : ''}
-      </div>
-      <div style="width:100%;height:1px;background:#cbd5e1;"></div>
-      <div style="flex:1;display:flex;align-items:flex-start;">
-        ${!isPos ? `<div style="width:100%;height:${heightPct/2}%;background:#ea580c;border-radius:0 0 2px 2px;"></div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
-  const sampleChipsHtml = samples.map((v, i) => 
-    `<span class="inspect-sample-chip" title="Chiều ${i + 1}">${mathSpan(texNum(v))}</span>`
-  ).join('');
-
-  return `<div class="inspect-tensor-card">
-    <div class="inspect-tensor-header">
-      <div style="font-weight:700;font-size:0.92rem;color:var(--ink);">${title}</div>
-      <span class="cluster-chip sm" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-family:var(--mono);">${mathSpan(shapeTex)}</span>
-    </div>
-    <div class="inspect-stats-grid">
-      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\min')}</div><div class="inspect-stat-val" style="color:#ea580c;">${mathSpan(texNum(t.min))}</div></div>
-      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\max')}</div><div class="inspect-stat-val" style="color:#16a34a;">${mathSpan(texNum(t.max))}</div></div>
-      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\mu')}</div><div class="inspect-stat-val">${mathSpan(texNum(t.mean))}</div></div>
-      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\sigma')}</div><div class="inspect-stat-val">${mathSpan(texNum(t.std))}</div></div>
-      <div class="inspect-stat-box"><div class="inspect-stat-label">${mathSpan('\\lVert \\cdot \\rVert_2')}</div><div class="inspect-stat-val" style="color:var(--primary);">${mathSpan(texNum(t.l2_norm))}</div></div>
-    </div>
-    <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px;">Phân phối 16 giá trị đầu (Sparkline / Âm &middot; Dương):</div>
-    <div class="inspect-bars-container">${barsHtml}</div>
-    <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;">Mẫu giá trị số thực kích hoạt (16 chiều đầu):</div>
-    <div class="inspect-sample-wrap">${sampleChipsHtml}</div>
-  </div>`;
-}
+const INSPECT_INFO = {
+  embedding: {title: 'Lớp Embedding', steps: [
+    'Mỗi lượt đặt trong lịch sử được tra bảng để đổi thành một vector ẩn.',
+    '14 trường tìm kiếm (điểm đến, ngày, số khách…) được cộng lại thành một query vector.',
+    'Cả hai ghép thành một chuỗi vector để đưa vào mô hình.']},
+  tensor3d: {title: 'Tensor đầu vào', steps: [
+    'Chuỗi vector được xếp thành khối dữ liệu 4 chiều: batch, kênh, vị trí chuỗi, đơn vị ẩn.',
+    'Bước này chỉ sắp xếp lại dữ liệu cho các khối trộn bên dưới, chưa tính toán gì.']},
+  layernorm: {title: 'Layer Norm', steps: [
+    'Các giá trị ẩn có thang đo lệch nhau, chỗ quá lớn, chỗ quá nhỏ.',
+    'Layer Norm kéo chúng về cùng một thang đo để các khối sau học ổn định.']},
+  seq_mix: {title: 'Sequence Mixing', steps: [
+    'Với mỗi đơn vị ẩn, các vị trí trong chuỗi (lượt đặt cũ, lượt gần nhất và query) trao đổi thông tin qua lại.',
+    'Nhờ vậy mô hình biết query hiện tại liên quan nhất tới lượt đặt nào trong quá khứ.']},
+  feat_mix: {title: 'Feature Mixing', steps: [
+    'Mỗi giá trị được biến đổi riêng lẻ: mở ra thành 3 rồi gộp lại thành 1.',
+    'Không có trao đổi giữa các ô vì đặc trưng ở đây chỉ có một chiều (cluster ID).']},
+  chan_mix: {title: 'Channel Mixing', steps: [
+    'Các đơn vị ẩn của cùng một vị trí được trộn lẫn với nhau.',
+    'Qua đó tạo ra các đặc trưng trừu tượng hơn từ biểu diễn ẩn ban đầu.']},
+  merge: {title: 'Hợp nhất & lặp 2 tầng', steps: [
+    'Kết quả của ba nhánh trộn được cộng lại với nhau.',
+    'Toàn bộ khối Mixer được áp dụng thêm một lần nữa lên kết quả này.']},
+  output: {title: 'Lớp đầu ra', steps: [
+    'Chỉ đọc biểu diễn tại vị trí query, nơi đã tổng hợp thông tin của cả lịch sử.',
+    'Chuẩn hóa rồi so khớp với bảng embedding của 100 cluster để ra điểm cho từng cluster, sau đó đổi thành xác suất.']},
+  samedest: {title: 'Thành phần sameDest', steps: [
+    'Tìm các lượt đặt trong lịch sử có cùng điểm đến với query hiện tại.',
+    'Lượt càng gần đây càng có trọng số lớn; cộng dồn thành phân phối trên các cluster.',
+    'Nếu điểm đến chưa từng xuất hiện, thành phần này không đóng góp.']},
+  fusion: {title: 'Dung hợp điểm', steps: [
+    'Điểm của mô hình và điểm sameDest (nhân trọng số w) được cộng ở thang log.',
+    'Sắp xếp theo điểm hợp nhất và lấy Top 5 cluster để gợi ý.']}
+};
 
 function inspectLayer(layerKey) {
-  if (!STATE.currentData || !STATE.currentData.activations) {
-    alert('Dữ liệu mô hình chưa tải xong. Vui lòng thử lại sau giây lát.');
-    return;
-  }
-  const act = STATE.currentData.activations[layerKey];
-  if (!act) return;
+  const info = INSPECT_INFO[layerKey];
+  if (!info) return;
+  const act = STATE.currentData && STATE.currentData.activations ? STATE.currentData.activations[layerKey] : null;
 
-  $('inspectModalTitle').textContent = act.name;
+  $('inspectModalTitle').textContent = info.title;
   $('inspectModalBadge').textContent = layerKey.toUpperCase();
 
-  let bodyHtml = `<div class="inspect-role-card">
-    <div style="font-weight:700;color:var(--primary);margin-bottom:4px;">Vai trò kiến trúc trong thuật toán:</div>
-    <div>${act.role}</div>
-    ${act.formula ? `<div style="margin-top:8px;"><div style="font-size:0.75rem;color:var(--muted);font-weight:700;">Công thức toán học:</div><div class="inspect-formula" data-tex="${act.formula.replace(/"/g, '&quot;')}" data-display="1"></div></div>` : ''}
-  </div>`;
-
-  if (layerKey === 'embedding') {
-    bodyHtml += renderTensorCard('1. Embedding chuỗi lịch sử (Item Embedding)', act.history_emb);
-    bodyHtml += renderTensorCard('2. Query Vector (Tổng 14 trường tìm kiếm + Mask)', act.query_vec);
-    bodyHtml += renderTensorCard('3. Tensor ghép nối chuỗi + Query [S+1, H]', act.combined);
-  } else if (layerKey === 'tensor3d') {
-    bodyHtml += renderTensorCard('Tensor 3D/4D sau Unsqueeze & Transpose', act.tensor);
-  } else if (layerKey === 'layernorm') {
-    bodyHtml += renderTensorCard('Tensor chuẩn hóa qua norm2(X)', act.tensor);
-  } else if (layerKey === 'seq_mix') {
-    bodyHtml += renderTensorCard('Đầu ra Sequence Mixing (MLP trên chiều 21 vị trí)', act.tensor);
-  } else if (layerKey === 'feat_mix') {
-    bodyHtml += renderTensorCard('Đầu ra Feature Mixing (MLP trên chiều kênh)', act.tensor);
-  } else if (layerKey === 'chan_mix') {
-    bodyHtml += renderTensorCard('Đầu ra Channel Mixing (MLP giữa 64 đơn vị ẩn)', act.tensor);
-  } else if (layerKey === 'merge') {
-    bodyHtml += renderTensorCard('Đầu ra sau Layer 1 (x0 + x1 + x2)', act.layer1);
-    bodyHtml += renderTensorCard('Đầu ra sau Layer 2 (Lặp khối thứ 2)', act.layer2);
-  } else if (layerKey === 'output') {
-    bodyHtml += renderTensorCard('1. Vector ẩn tại Query Position (sau LayerNorm)', act.query_hidden);
-    bodyHtml += renderTensorCard('2. Điểm Logits trước Softmax (100 cluster)', act.logits);
-    bodyHtml += renderTensorCard('3. Xác suất Softmax của mô hình SMLP4Rec (model_p)', act.model_softmax_p);
-  } else if (layerKey === 'samedest') {
-    bodyHtml += `<div class="inspect-tensor-card">
-      <div style="font-weight:700;margin-bottom:6px;">Trạng thái sameDest trong lần chạy này:</div>
-      <div style="display:flex;gap:12px;margin-bottom:12px;">
-        <span class="cluster-chip sm" style="background:${act.active ? '#dcfce7' : '#f1f5f9'};color:${act.active ? '#166534' : '#64748b'};">
-          ${act.active ? 'Đã kích hoạt (Điểm đến có trong lịch sử)' : 'Chưa kích hoạt (Điểm đến mới)'}
-        </span>
-        <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">${mathSpan('w = ' + texNum(act.weight_w))}</span>
-      </div>
-    </div>`;
-    bodyHtml += renderTensorCard('Phân phối xác suất sameDest trên 100 cụm', act.distribution);
-  } else if (layerKey === 'fusion') {
-    bodyHtml += `<div class="inspect-tensor-card">
-      <div style="font-weight:700;margin-bottom:6px;">Tham số dung hợp tối ưu trên tập Validation:</div>
-      <div style="display:flex;gap:10px;margin-bottom:10px;">
-        <span class="cluster-chip sm" style="background:#e0f2fe;color:#0369a1;">Làm mịn ${mathSpan('\\alpha = ' + texNum(act.alpha))}</span>
-        <span class="cluster-chip sm" style="background:#ede9fe;color:#6b21a8;">Trọng số ${mathSpan('w = ' + texNum(act.weight_w))}</span>
-      </div>
-    </div>`;
-    bodyHtml += renderTensorCard('Log-Score sau dung hợp (Trước Softmax cuối)', act.final_scores);
+  let bodyHtml = `<div class="inspect-stage"><svg class="anim-svg" viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hoạt ảnh minh hoạ: ${info.title}">${ANIM[layerKey](act)}</svg></div>`;
+  bodyHtml += `<ol class="inspect-steps">${info.steps.map(t => `<li>${t}</li>`).join('')}</ol>`;
+  if (layerKey === 'samedest' && act) {
+    bodyHtml += `<div class="inspect-note ${act.active ? 'on' : 'off'}">${act.active ? 'Lần chạy này: điểm đến đã có trong lịch sử, sameDest được kích hoạt.' : 'Lần chạy này: điểm đến mới, sameDest không đóng góp.'}</div>`;
   }
 
   $('inspectModalBody').innerHTML = bodyHtml;
-  const typeset = () => typesetAll($('inspectModalBody'));
-  if (window.katex) typeset(); else window.addEventListener('load', typeset, {once: true});
   $('modalInspector').classList.add('open');
 }
 
