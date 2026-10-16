@@ -937,6 +937,7 @@ input:focus, select:focus {
 .anim-svg .settle { transform: scaleY(var(--s)); animation: settleDown 3s ease-in-out infinite; }
 .anim-svg .bar-static { transform: scaleY(var(--s)); }
 .anim-svg .slide { animation: slideDepth 2.6s ease-in-out infinite; }
+.anim-svg .scan { opacity: 0; animation: scanHi 3.2s linear infinite; animation-delay: var(--d, 0s); }
 .anim-svg .glow { animation: glowPulse 1.6s ease-in-out infinite; }
 .anim-svg .dim { opacity: 0.35; animation: none; }
 
@@ -944,7 +945,8 @@ input:focus, select:focus {
 @keyframes flowDash { to { stroke-dashoffset: -12; } }
 @keyframes growUp { 0% { transform: scaleY(0.04); } 45%, 85% { transform: scaleY(1); } 100% { transform: scaleY(0.04); } }
 @keyframes settleDown { 0%, 15% { transform: scaleY(var(--s)); } 55%, 90% { transform: scaleY(1); } 100% { transform: scaleY(var(--s)); } }
-@keyframes slideDepth { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, -24px); } }
+@keyframes slideDepth { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(var(--tx, 30px), var(--ty, -24px)); } }
+@keyframes scanHi { 0% { opacity: 1; } 12% { opacity: 1; } 22%, 100% { opacity: 0; } }
 @keyframes glowPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .anim-svg * { animation: none !important; }
@@ -1949,18 +1951,18 @@ function filterAndRender100Ranking() {
 }
 
 // --- MODEL BLOCK ANIMATIONS (inspector) ---
+// Nội dung bám theo bài báo SMLP4Rec (Gao et al., ACM TOIS 2024, mục 2.4) và code nbp_demo/model.py, scoring.py.
 const AN = {blue: '#3b6ea5', blueL: '#dbeafe', orange: '#ea580c', orangeL: '#ffedd5', green: '#16a34a', gray: '#94a3b8', grayL: '#e2e8f0', ink: '#1f2937'};
 
 const aText = (x, y, str, o = {}) =>
   `<text x="${x}" y="${y}" font-size="${o.size || 13}" fill="${o.fill || AN.ink}" text-anchor="${o.anchor || 'middle'}" font-weight="${o.weight || 500}">${str}</text>`;
-const aChip = (x, y, w, h, str, fill, stroke) =>
-  `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>` +
+const aChip = (x, y, w, h, str, fill, stroke, dash) =>
+  `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${fill}" stroke="${stroke}" stroke-width="1.4"${dash ? ' stroke-dasharray="5 3"' : ''}/>` +
   aText(x + w / 2, y + h / 2 + 4, str, {size: 12, weight: 600});
 const aArrow = (x1, y1, x2, y2, color = AN.gray) =>
   `<line class="flow" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2"/>`;
 const aDot = (path, color, dur = 2.2, begin = 0) =>
   `<circle r="5" fill="${color}"><animateMotion dur="${dur}s" begin="${begin}s" repeatCount="indefinite" path="${path}"/></circle>`;
-// column of n small cells that light up one after another
 const aVec = (x, y, n, color, d = 0) => {
   let s = '';
   for (let k = 0; k < n; k++) {
@@ -1968,51 +1970,91 @@ const aVec = (x, y, n, color, d = 0) => {
   }
   return s;
 };
-// deterministic pseudo-random in [0,1) so every render looks the same
 const aRand = (i) => { const v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
 const aBars = (x, base, heights, colors, w, gap, delayStep = 0.12) =>
   heights.map((h, i) => h <= 0 ? '' :
     `<rect class="grow" style="--d:${(i * delayStep).toFixed(2)}s" x="${x + i * (w + gap)}" y="${base - h}" width="${w}" height="${h}" rx="2" fill="${Array.isArray(colors) ? colors[i] : colors}"/>`).join('');
 
+// Bảng (vị trí × kênh) bên trái; `scan(r, c)` trả về độ trễ để tô sáng lát cắt đang được MLP xử lý, hoặc null.
+function aTable(rows, cols, hl) {
+  const x0 = 40, y0 = 62, cw = 22, ch = 15, g = 4;
+  let s = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    s += `<rect x="${x0 + c * (cw + g)}" y="${y0 + r * (ch + g)}" width="${cw}" height="${ch}" rx="2.5" fill="${AN.blue}" fill-opacity="0.28"/>`;
+  }
+  const W = cols * (cw + g) - g, H = rows * (ch + g) - g;
+  s += aText(x0 + W / 2, 40, 'kênh (C) →', {size: 12, fill: AN.gray}) +
+       `<g transform="rotate(-90 ${x0 - 14} ${y0 + H / 2})">${aText(x0 - 14, y0 + H / 2 + 4, 'vị trí (S) →', {size: 12, fill: AN.gray})}</g>`;
+  s += hl(x0, y0, cw, ch, g, W, H);
+  return s;
+}
+// MLP hai lớp: n vào → 3n ẩn → n ra
+function aMlp(nIn, nHid, nOut, color, label) {
+  const xs = [380, 490, 595], y0 = 62, y1 = 190;
+  const ys = n => Array.from({length: n}, (_, i) => n === 1 ? (y0 + y1) / 2 : y0 + i * (y1 - y0) / (n - 1));
+  const P = [ys(nIn), ys(nHid), ys(nOut)];
+  let s = '';
+  [[0, 1], [1, 2]].forEach(([a, b]) => P[a].forEach(ya => P[b].forEach(yb => {
+    s += `<line x1="${xs[a]}" y1="${ya}" x2="${xs[b]}" y2="${yb}" stroke="${AN.gray}" stroke-width="0.8" opacity="0.28"/>`;
+  })));
+  [[0, 1], [1, 2]].forEach(([a, b], k) => {
+    for (let n = 0; n < 3; n++) {
+      const i = Math.floor(aRand(k * 7 + n) * P[a].length), j = Math.floor(aRand(k * 7 + n + 3) * P[b].length);
+      s += `<line class="flow" style="animation-delay:${n * 0.2}s" x1="${xs[a]}" y1="${P[a][i]}" x2="${xs[b]}" y2="${P[b][j]}" stroke="${color}" stroke-width="1.8"/>`;
+    }
+  });
+  P.forEach((col, ci) => col.forEach((y, k) => {
+    s += `<circle class="cell" style="--d:${(ci * 0.5 + k * 0.05).toFixed(2)}s" cx="${xs[ci]}" cy="${y}" r="${col.length > 6 ? 4.5 : 8}" fill="${ci === 1 ? AN.gray : color}"/>`;
+  }));
+  s += aText(xs[0], 44, 'vào', {size: 12, fill: AN.gray}) + aText(xs[1], 44, 'ẩn (gấp 3 lần) + GELU', {size: 12, fill: AN.gray}) + aText(xs[2], 44, 'ra', {size: 12, fill: AN.gray});
+  s += aText(320, 236, label, {size: 12, fill: AN.gray});
+  return s;
+}
+const aScanRect = (x, y, w, h, d, color) =>
+  `<rect class="scan" style="--d:${d.toFixed(2)}s" x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="4" fill="${color}" fill-opacity="0.25" stroke="${color}" stroke-width="2"/>`;
+
 const ANIM = {
   embedding() {
-    let s = aText(160, 12, 'Lịch sử đặt phòng', {size: 12, fill: AN.blue, weight: 700}) +
+    let s = aText(160, 12, 'Lịch sử đặt (tối đa 20 lượt)', {size: 12, fill: AN.blue, weight: 700}) +
             aText(500, 12, 'Trường tìm kiếm hiện tại', {size: 12, fill: AN.orange, weight: 700});
     ['Lượt 1', 'Lượt 2', '…', 'Lượt L'].forEach((l, i) => {
       const x = 20 + i * 72;
       s += aChip(x, 20, 64, 24, l, AN.blueL, AN.blue) + aArrow(x + 32, 46, x + 32, 66, AN.blue) + aVec(x + 25, 70, 6, AN.blue, i);
     });
-    s += aText(160, 138, 'mỗi lượt → một vector', {size: 12, fill: AN.gray});
+    s += aText(160, 138, 'tra bảng embedding: cluster → vector', {size: 12, fill: AN.gray});
     ['Điểm đến', 'Ngày', 'Số khách', '…'].forEach((l, i) => {
       const x = 340 + i * 72;
       s += aChip(x, 20, 64, 24, l, AN.orangeL, AN.orange) + aArrow(x + 32, 46, 500, 64, AN.orange);
     });
     s += `<circle cx="500" cy="74" r="10" fill="#fff" stroke="${AN.orange}" stroke-width="1.6"/>` + aText(500, 79, '+', {size: 15, weight: 700, fill: AN.orange}) +
-         aArrow(500, 86, 500, 98, AN.orange) + aVec(493, 102, 5, AN.orange, 1) + aText(500, 164, '14 trường → một query vector', {size: 12, fill: AN.gray});
-    s += aText(320, 190, 'Ghép thành một chuỗi vector đưa vào mô hình', {size: 13, weight: 700});
+         aArrow(500, 86, 500, 98, AN.orange) + aVec(493, 102, 5, AN.orange, 1) +
+         aText(500, 164, '14 trường + vector mask, cộng lại → 1 query', {size: 12, fill: AN.gray});
+    s += aText(320, 188, 'Xếp thành một bảng: 20 chỗ lịch sử (thiếu thì đệm 0) + 1 chỗ query', {size: 13, weight: 700});
     for (let k = 0; k < 21; k++) {
-      const x = 89 + k * 22, c = k < 20 ? AN.blue : AN.orange;
-      for (let r = 0; r < 3; r++) s += `<rect class="cell" style="--d:${(k * 0.1 + r * 0.05).toFixed(2)}s" x="${x}" y="${200 + r * 9}" width="14" height="7" rx="1.5" fill="${c}"/>`;
+      const x = 89 + k * 22, c = k < 17 ? AN.blue : (k < 20 ? AN.grayL : AN.orange);
+      for (let r = 0; r < 3; r++) s += `<rect class="${k >= 17 && k < 20 ? '' : 'cell'}" style="--d:${(k * 0.1 + r * 0.05).toFixed(2)}s" x="${x}" y="${200 + r * 9}" width="14" height="7" rx="1.5" fill="${c}" stroke="${k >= 17 && k < 20 ? AN.gray : 'none'}" stroke-width="0.8"/>`;
     }
+    s += aText(89 + 18.5 * 22, 238, 'đệm', {size: 11, fill: AN.gray}) + aText(89 + 20 * 22 + 7, 238, 'query', {size: 11, fill: AN.orange, weight: 700});
     return s;
   },
 
   tensor3d() {
-    let s = aText(120, 38, 'Bảng: vị trí × đơn vị ẩn', {size: 12, fill: AN.gray});
-    for (let r = 0; r < 5; r++) for (let c = 0; c < 10; c++) {
-      s += `<rect class="cell" style="--d:${((r + c) * 0.08).toFixed(2)}s" x="${30 + c * 18}" y="${60 + r * 14}" width="16" height="12" rx="1.5" fill="${AN.blue}"/>`;
+    let s = aText(125, 38, 'Một bảng: vị trí × kênh', {size: 12, fill: AN.gray});
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 10; c++) {
+      s += `<rect class="cell" style="--d:${((r + c) * 0.08).toFixed(2)}s" x="${30 + c * 18}" y="${58 + r * 14}" width="16" height="12" rx="1.5" fill="${AN.blue}"/>`;
     }
-    s += aArrow(232, 105, 312, 105, AN.blue);
-    const fx = 345, fy = 90, fw = 120, fh = 80, ox = 30, oy = -24;
+    s += aArrow(232, 100, 312, 100, AN.blue);
+    const fx = 345, fy = 70, fw = 190, fh = 100, ox = 18, oy = -14;
     s += `<polygon points="${fx},${fy} ${fx + ox},${fy + oy} ${fx + fw + ox},${fy + oy} ${fx + fw},${fy}" fill="#f1f5f9" stroke="${AN.gray}" stroke-width="1.4"/>` +
          `<polygon points="${fx + fw},${fy} ${fx + fw + ox},${fy + oy} ${fx + fw + ox},${fy + fh + oy} ${fx + fw},${fy + fh}" fill="#e2e8f0" stroke="${AN.gray}" stroke-width="1.4"/>` +
          `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="#f1f5f9" stroke="${AN.gray}" stroke-width="1.4"/>`;
-    for (let i = 1; i < 4; i++) s += `<line x1="${fx + i * 30}" y1="${fy}" x2="${fx + i * 30}" y2="${fy + fh}" stroke="${AN.grayL}"/><line x1="${fx}" y1="${fy + i * 20}" x2="${fx + fw}" y2="${fy + i * 20}" stroke="${AN.grayL}"/>`;
-    s += `<rect class="slide" x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="${AN.blue}" fill-opacity="0.35" stroke="${AN.blue}" stroke-width="1.6"/>`;
-    s += aText(fx + fw / 2, fy + fh + 22, 'kênh', {size: 12, fill: AN.gray}) +
-         aText(fx + fw / 2 + ox, fy + oy - 8, 'đơn vị ẩn', {size: 12, fill: AN.gray}) +
-         `<g transform="rotate(-90 ${fx - 12} ${fy + fh / 2})">${aText(fx - 12, fy + fh / 2 + 4, 'vị trí chuỗi', {size: 12, fill: AN.gray})}</g>` +
-         aText(fx + fw / 2 + 20, 222, 'Thêm hai chiều batch và kênh (đều = 1)', {size: 12, fill: AN.gray});
+    for (let i = 1; i < 8; i++) s += `<line x1="${fx + i * fw / 8}" y1="${fy}" x2="${fx + i * fw / 8}" y2="${fy + fh}" stroke="${AN.grayL}"/>`;
+    for (let i = 1; i < 6; i++) s += `<line x1="${fx}" y1="${fy + i * fh / 6}" x2="${fx + fw}" y2="${fy + i * fh / 6}" stroke="${AN.grayL}"/>`;
+    s += `<rect class="slide" style="--tx:${ox}px;--ty:${oy}px" x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="${AN.blue}" fill-opacity="0.35" stroke="${AN.blue}" stroke-width="1.6"/>`;
+    s += aText(fx + fw / 2, fy + fh + 22, 'kênh (C)', {size: 12, fill: AN.gray}) +
+         aText(fx + fw + ox + 4, fy + oy - 6, 'đặc trưng (F = 1)', {size: 12, fill: AN.gray, anchor: 'end'}) +
+         `<g transform="rotate(-90 ${fx - 12} ${fy + fh / 2})">${aText(fx - 12, fy + fh / 2 + 4, 'vị trí chuỗi (S)', {size: 12, fill: AN.gray})}</g>`;
+    s += aText(320, 232, 'Bảng 3 chiều S × F × C của bài báo; ở đây chỉ có 1 đặc trưng (ID cluster) nên F = 1', {size: 12, fill: AN.gray});
     return s;
   },
 
@@ -2025,76 +2067,55 @@ const ANIM = {
     });
     s += `<line x1="15" y1="130" x2="295" y2="130" stroke="${AN.gray}" stroke-dasharray="3 3"/><line x1="342" y1="130" x2="622" y2="130" stroke="${AN.gray}" stroke-dasharray="3 3"/>`;
     s += aArrow(300, 130, 338, 130, AN.gray);
-    s += aText(155, 205, 'giá trị lệch, to nhỏ khác nhau', {size: 12, fill: AN.gray}) + aText(482, 205, 'cùng thang đo, quanh mức trung bình', {size: 12, fill: AN.gray});
+    s += aText(155, 205, 'các kênh của một vị trí: lệch, to nhỏ khác nhau', {size: 12, fill: AN.gray}) + aText(482, 205, 'cùng thang đo, quanh mức trung bình', {size: 12, fill: AN.gray});
+    s += aText(320, 236, 'Chỉ chuẩn hóa theo chiều kênh, một lần, trước khi vào 3 nhánh', {size: 12, fill: AN.gray});
     return s;
   },
 
   seq_mix() {
-    const cw = 50, gap = 8, x0 = 59, y = 130, cols = 9;
-    const cx = i => x0 + i * (cw + gap) + cw / 2;
-    let s = aText(320, 24, 'Một đơn vị ẩn, qua các vị trí trong chuỗi', {size: 12, fill: AN.gray});
-    for (let i = 0; i < cols; i++) {
-      const q = i === cols - 1;
-      s += `<rect class="cell" style="--d:${(i * 0.15).toFixed(2)}s" x="${x0 + i * (cw + gap)}" y="${y}" width="${cw}" height="30" rx="4" fill="${q ? AN.orange : AN.blue}"/>`;
-    }
-    for (let i = 0; i < cols - 1; i++) {
-      const d = cx(cols - 1) - cx(i), h = 14 + d * 0.16;
-      s += `<path class="flow" d="M ${cx(i)} ${y} Q ${(cx(i) + cx(cols - 1)) / 2} ${y - h * 1.6} ${cx(cols - 1)} ${y}" fill="none" stroke="${AN.orange}" stroke-width="1.6" opacity="0.8"/>`;
-    }
-    [[0, 3], [1, 5], [2, 6]].forEach(([a, b]) => {
-      s += `<path class="flow" d="M ${cx(a)} ${y + 30} Q ${(cx(a) + cx(b)) / 2} ${y + 30 + (cx(b) - cx(a)) * 0.22} ${cx(b)} ${y + 30}" fill="none" stroke="${AN.blue}" stroke-width="1.6" opacity="0.8"/>`;
+    const rows = 7, cols = 8;
+    const left = aTable(rows, cols, (x0, y0, cw, ch, g, W, H) => {
+      let s = '';
+      for (let c = 0; c < cols; c++) s += aScanRect(x0 + c * (cw + g), y0, cw, H, c * 0.4, AN.orange);
+      return s;
     });
-    s += aText(x0 + 27, 190, 'lượt cũ', {size: 12, fill: AN.blue}) + aText(cx(cols - 1), 190, 'query', {size: 12, fill: AN.orange, weight: 700}) +
-         aText(320, 232, 'Các lượt đặt và query “nhìn” lẫn nhau để biết lượt nào liên quan', {size: 12, fill: AN.gray});
-    return s;
+    return left + aArrow(285, 120, 345, 120, AN.orange) + aMlp(4, 12, 4, AN.orange, 'cả chuỗi vị trí của MỘT kênh đi qua MLP, mọi kênh dùng chung trọng số');
   },
 
   feat_mix() {
-    let s = aText(165, 32, 'Mọi ô trong bảng', {size: 12, fill: AN.gray});
-    for (let r = 0; r < 6; r++) for (let c = 0; c < 9; c++) {
-      s += `<rect class="cell" style="--d:${(aRand(r * 9 + c) * 2.4).toFixed(2)}s" x="${35 + c * 29}" y="${50 + r * 21}" width="24" height="16" rx="3" fill="${AN.blue}"/>`;
-    }
-    s += `<line x1="288" y1="113" x2="372" y2="113" stroke="${AN.gray}" stroke-dasharray="3 3"/>`;
-    s += aText(490, 32, 'Mỗi ô được biến đổi riêng', {size: 12, fill: AN.gray});
-    const dots = [[395, 113], [490, 78], [490, 113], [490, 148], [585, 113]];
-    [1, 2, 3].forEach(i => { s += aArrow(407, 113, 478, dots[i][1], AN.blue) + aArrow(502, dots[i][1], 573, 113, AN.blue); });
-    dots.forEach(([x, y], i) => { s += `<circle class="glow" style="animation-delay:${i === 0 || i === 4 ? 0 : 0.5}s" cx="${x}" cy="${y}" r="12" fill="${i === 0 || i === 4 ? AN.orange : AN.blue}"/>`; });
-    s += aText(395, 180, '1 giá trị', {size: 12, fill: AN.gray}) + aText(490, 180, 'mở ra 3', {size: 12, fill: AN.gray}) + aText(585, 180, 'gộp lại 1', {size: 12, fill: AN.gray}) +
-         aText(320, 228, 'Các ô không trao đổi với nhau (đặc trưng chỉ có một chiều: cluster ID)', {size: 12, fill: AN.gray});
-    return s;
+    const rows = 7, cols = 8;
+    const left = aTable(rows, cols, (x0, y0, cw, ch, g) => {
+      let s = '';
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) s += aScanRect(x0 + c * (cw + g), y0 + r * (ch + g), cw, ch, aRand(r * cols + c) * 3.2, AN.orange);
+      return s;
+    });
+    return left + aArrow(285, 120, 345, 120, AN.orange) + aMlp(1, 3, 1, AN.orange, 'chỉ có 1 đặc trưng (F = 1): từng ô tự đi qua MLP 1 → 3 → 1, không trộn với ô khác');
   },
 
   chan_mix() {
-    const cols = [[100, 8, 24, 38], [320, 6, 30, 52], [540, 8, 24, 38]];
-    const pts = cols.map(([x, n, gap, y0]) => Array.from({length: n}, (_, k) => [x, y0 + k * gap]));
-    let s = '';
-    [[0, 1], [1, 2]].forEach(([a, b]) => pts[a].forEach(p => pts[b].forEach(q => {
-      s += `<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="${AN.gray}" stroke-width="1" opacity="0.22"/>`;
-    })));
-    [[0, 1, 0, 1], [0, 1, 5, 4], [0, 1, 7, 3], [1, 2, 2, 6], [1, 2, 4, 1], [1, 2, 5, 7]].forEach(([a, b, i, j], n) => {
-      s += `<line class="flow" style="animation-delay:${n * 0.15}s" x1="${pts[a][i][0]}" y1="${pts[a][i][1]}" x2="${pts[b][j][0]}" y2="${pts[b][j][1]}" stroke="${AN.blue}" stroke-width="1.8"/>`;
+    const rows = 7, cols = 8;
+    const left = aTable(rows, cols, (x0, y0, cw, ch, g, W) => {
+      let s = '';
+      for (let r = 0; r < rows; r++) s += aScanRect(x0, y0 + r * (ch + g), W, ch, r * (3.2 / rows), AN.orange);
+      return s;
     });
-    pts.forEach((col, ci) => col.forEach(([x, y], k) => {
-      s += `<circle class="cell" style="--d:${(ci * 0.5 + k * 0.1).toFixed(2)}s" cx="${x}" cy="${y}" r="8" fill="${ci === 1 ? AN.orange : AN.blue}"/>`;
-    }));
-    s += aText(100, 240, 'các đơn vị ẩn của một vị trí', {size: 12, fill: AN.gray}) + aText(320, 240, 'pha trộn lẫn nhau', {size: 12, fill: AN.gray}) + aText(540, 240, 'đặc trưng mới', {size: 12, fill: AN.gray});
-    return s;
+    return left + aArrow(285, 120, 345, 120, AN.orange) + aMlp(4, 12, 4, AN.orange, 'tất cả kênh của MỘT vị trí đi qua MLP (C → 3C → C), mọi vị trí dùng chung trọng số');
   },
 
   merge() {
-    const br = [['Sequence mixing', 40], ['Feature mixing', 100], ['Channel mixing', 160]];
-    let s = '';
-    br.forEach(([l, y], i) => {
-      s += aChip(20, y, 140, 40, l, AN.blueL, AN.blue) + `<path class="flow" d="M 160 ${y + 20} L 240 125" fill="none" stroke="${AN.gray}" stroke-width="2"/>` +
-           aDot(`M 160 ${y + 20} L 240 125`, AN.blue, 2.4, i * 0.4);
-    });
-    s += `<circle cx="256" cy="125" r="16" fill="#fff" stroke="${AN.ink}" stroke-width="1.6"/>` + aText(256, 132, '+', {size: 20, weight: 700});
-    s += aArrow(272, 125, 322, 125, AN.blue) + aDot('M 272 125 L 322 125', AN.blue, 1.2);
-    s += aChip(324, 100, 120, 50, 'Kết quả tầng 1', '#fff', AN.ink);
-    s += aArrow(446, 125, 494, 125, AN.blue) + aDot('M 446 125 L 494 125', AN.blue, 1.2, 0.3);
-    s += `<rect x="496" y="100" width="124" height="50" rx="5" fill="${AN.blueL}" stroke="${AN.blue}" stroke-width="1.6" stroke-dasharray="5 3"/>` +
-         aText(558, 121, 'Lặp lại cả khối', {size: 12, weight: 700}) + aText(558, 139, '(tầng 2)', {size: 12});
-    s += aText(320, 222, 'Ba nhánh được cộng lại, rồi cả khối Mixer chạy thêm một lần nữa', {size: 12, fill: AN.gray});
+    let s = aChip(14, 96, 80, 44, 'Đầu vào', '#fff', AN.ink);
+    s += aArrow(96, 118, 124, 118, AN.blue) +
+         `<rect x="126" y="70" width="190" height="96" rx="6" fill="#fff" stroke="${AN.ink}" stroke-width="1.4"/>` +
+         aText(221, 88, 'Khối Mixer', {size: 12, weight: 700});
+    ['Sequence', 'Feature', 'Channel'].forEach((l, i) => { s += aChip(138, 96 + i * 22, 166, 18, l + ' mixing', AN.blueL, AN.blue); });
+    s += aText(221, 186, '3 nhánh chạy song song trên cùng một đầu vào', {size: 11, fill: AN.gray});
+    s += aArrow(318, 118, 346, 118, AN.blue) + `<circle cx="362" cy="118" r="14" fill="#fff" stroke="${AN.ink}" stroke-width="1.6"/>` + aText(362, 125, '+', {size: 19, weight: 700});
+    s += aArrow(378, 118, 410, 118, AN.blue) + aChip(412, 96, 84, 44, 'Tầng 1', '#fff', AN.ink);
+    const loop = 'M 454 94 C 454 20 221 20 221 66';
+    s += `<path class="flow" d="${loop}" fill="none" stroke="${AN.orange}" stroke-width="2"/>` + aDot(loop, AN.orange, 2.6) +
+         aText(338, 22, 'lặp lần 2: cùng khối, cùng trọng số', {size: 12, fill: AN.orange, weight: 700});
+    s += aArrow(498, 118, 534, 118, AN.green) + aChip(536, 96, 88, 44, 'Tầng 2', AN.blueL, AN.blue) + aDot('M 498 118 L 536 118', AN.green, 1.4);
+    s += aText(320, 222, 'Ba nhánh được cộng lại (không cộng thêm đầu vào), rồi lặp lại một lần nữa', {size: 12, fill: AN.gray});
     return s;
   },
 
@@ -2102,38 +2123,38 @@ const ANIM = {
     let s = '';
     for (let k = 0; k < 8; k++) {
       const q = k === 7;
-      s += `<rect class="${q ? 'glow' : 'cell'}" style="--d:${(k * 0.12).toFixed(2)}s" x="40" y="${40 + k * 20}" width="36" height="16" rx="3" fill="${q ? AN.orange : AN.blue}"/>`;
+      s += `<rect class="${q ? 'glow' : 'cell'}" style="--d:${(k * 0.12).toFixed(2)}s" x="30" y="${40 + k * 20}" width="36" height="16" rx="3" fill="${q ? AN.orange : AN.blue}"/>`;
     }
-    s += aText(58, 228, 'chỉ lấy vị trí query', {size: 12, fill: AN.orange, weight: 700});
-    s += aArrow(84, 188, 148, 125, AN.orange) + aChip(150, 100, 100, 50, 'Chuẩn hóa', '#fff', AN.ink);
-    s += aArrow(252, 125, 298, 125, AN.blue) + aChip(300, 100, 110, 50, 'So khớp 100 cluster', '#fff', AN.ink);
-    s += aArrow(412, 125, 448, 125, AN.blue);
+    s += aText(30, 214, 'chỉ lấy hàng query', {size: 12, fill: AN.orange, weight: 700, anchor: 'start'});
+    s += aArrow(74, 188, 120, 125, AN.orange) + aChip(122, 100, 84, 50, 'Chuẩn hóa', '#fff', AN.ink);
+    s += aArrow(208, 125, 240, 125, AN.blue) +
+         `<rect x="242" y="100" width="122" height="50" rx="5" fill="#fff" stroke="${AN.ink}" stroke-width="1.4"/>` +
+         aText(303, 121, 'Nhân với embedding', {size: 12, weight: 600}) + aText(303, 138, 'của 100 cluster', {size: 12, weight: 600});
+    s += aArrow(366, 125, 402, 125, AN.blue) + aChip(404, 100, 62, 50, 'softmax', '#fff', AN.ink);
+    s += aArrow(468, 125, 494, 125, AN.blue);
     const h = [30, 22, 48, 95, 26, 38, 18, 80, 24, 34, 20, 60], top = new Set([3, 7, 11, 2, 5]);
-    s += aBars(452, 200, h, h.map((_, i) => top.has(i) ? AN.green : AN.gray), 10, 4, 0.08);
-    s += aText(536, 222, 'điểm → xác suất mỗi cluster (minh hoạ)', {size: 11, fill: AN.gray});
+    s += aBars(498, 200, h, h.map((_, i) => top.has(i) ? AN.green : AN.gray), 7, 3, 0.08);
+    s += aText(560, 222, 'xác suất mô hình (minh hoạ)', {size: 11, fill: AN.gray});
+    s += aText(320, 240, 'Điểm của cluster = độ giống giữa vector query và embedding của cluster đó', {size: 12, fill: AN.gray});
     return s;
   },
 
   samedest() {
-    const active = true; // minh hoạ cơ chế đầy đủ; trạng thái thật của lần chạy hiện ở ghi chú bên dưới
     const same = new Set([1, 4, 6]);
     let s = aText(190, 28, 'Lịch sử đặt (cũ → mới)', {size: 12, fill: AN.gray}) + aText(540, 28, 'Cộng dồn theo cluster', {size: 12, fill: AN.gray});
     for (let i = 0; i < 8; i++) {
-      const sz = 18 + i * 3, x = 30 + i * 46, y = 110 - sz, on = same.has(i) && active;
-      s += `<rect class="${on ? 'glow' : ''}" x="${x}" y="${y}" width="${sz}" height="${sz}" rx="4" fill="${same.has(i) ? (active ? AN.orange : AN.gray) : AN.grayL}" stroke="${same.has(i) ? (active ? '#c2410c' : AN.gray) : AN.gray}" stroke-width="1.2"/>`;
+      const sz = 18 + i * 3, x = 30 + i * 46, y = 110 - sz, on = same.has(i);
+      s += `<rect class="${on ? 'glow' : ''}" x="${x}" y="${y}" width="${sz}" height="${sz}" rx="4" fill="${on ? AN.orange : AN.grayL}" stroke="${on ? '#c2410c' : AN.gray}" stroke-width="1.2"/>`;
     }
-    s += aText(190, 134, active ? 'ô cam: cùng điểm đến với query' : 'không lượt nào trùng điểm đến', {size: 12, fill: active ? AN.orange : AN.gray, weight: 700});
-    if (active) {
-      [[1, 0], [4, 1], [6, 2]].forEach(([i, b], n) => {
-        const sz = 18 + i * 3, sx = 30 + i * 46 + sz / 2, sy = 110;
-        const tx = 480 + b * 30 + 10;
-        const path = `M ${sx} ${sy} C ${sx} 170 ${tx} 130 ${tx} 190`;
-        s += `<path class="flow" d="${path}" fill="none" stroke="${AN.orange}" stroke-width="1.6" opacity="0.7"/>` + aDot(path, AN.orange, 2.6, n * 0.5);
-      });
-    }
-    s += aBars(480, 215, active ? [20, 46, 82, 0, 0] : [], AN.orange, 20, 10, 0.3);
+    s += aText(190, 134, 'ô cam: cùng điểm đến với query', {size: 12, fill: AN.orange, weight: 700});
+    [[1, 0], [4, 1], [6, 2]].forEach(([i, b], n) => {
+      const sz = 18 + i * 3, sx = 30 + i * 46 + sz / 2, sy = 110, tx = 490 + b * 30;
+      const path = `M ${sx} ${sy} C ${sx} 170 ${tx} 130 ${tx} 190`;
+      s += `<path class="flow" d="${path}" fill="none" stroke="${AN.orange}" stroke-width="1.6" opacity="0.7"/>` + aDot(path, AN.orange, 2.6, n * 0.5);
+    });
+    s += aBars(480, 215, [20, 46, 82, 0, 0], AN.orange, 20, 10, 0.3);
     s += `<line x1="470" y1="215" x2="620" y2="215" stroke="${AN.gray}"/>`;
-    s += aText(320, 238, 'Đặt càng gần đây → đóng góp càng lớn', {size: 12, fill: AN.gray});
+    s += aText(320, 238, 'Lượt càng cũ càng bị giảm trọng số; cuối cùng chia cho tổng để thành phân phối', {size: 12, fill: AN.gray});
     return s;
   },
 
@@ -2143,49 +2164,50 @@ const ANIM = {
     s += aBars(30, 190, [40, 90, 30, 70, 20, 50], AN.blue, 14, 6, 0.1);
     s += aBars(190, 190, [10, 4, 60, 6, 3, 35], AN.orange, 14, 6, 0.1);
     s += `<line x1="20" y1="190" x2="130" y2="190" stroke="${AN.gray}"/><line x1="180" y1="190" x2="290" y2="190" stroke="${AN.gray}"/><line x1="440" y1="190" x2="610" y2="190" stroke="${AN.gray}"/>`;
-    s += aArrow(134, 130, 318, 130, AN.gray).replace('stroke-dasharray', 'stroke-dasharray') + `<circle cx="338" cy="130" r="14" fill="#fff" stroke="${AN.ink}" stroke-width="1.6"/>` + aText(338, 137, '+', {size: 19, weight: 700});
+    s += aArrow(134, 130, 318, 130, AN.gray) + `<circle cx="338" cy="130" r="14" fill="#fff" stroke="${AN.ink}" stroke-width="1.6"/>` + aText(338, 137, '+', {size: 19, weight: 700});
     s += aArrow(354, 130, 424, 130, AN.gray) + aDot('M 134 130 L 324 130', AN.blue, 2.2) + aDot('M 292 150 L 324 134', AN.orange, 1.2) + aDot('M 352 130 L 424 130', AN.green, 1.4, 0.4);
     const h = [50, 90, 88, 75, 20, 85], top = [true, true, true, true, false, true];
     s += aBars(450, 190, h, h.map((_, i) => top[i] ? AN.green : AN.gray), 18, 8, 0.1);
     s += aText(530, 40, 'Điểm hợp nhất', {size: 12, fill: AN.green, weight: 700}) + aText(530, 56, 'xanh lá = Top 5', {size: 12, fill: AN.green});
     s += aText(75, 210, 'p(model)', {size: 12, fill: AN.gray}) + aText(235, 210, 'p(sameDest)', {size: 12, fill: AN.gray}) + aText(525, 210, 'xếp hạng cuối', {size: 12, fill: AN.gray});
-    s += aText(320, 238, 'Cộng ở thang log rồi xếp hạng (minh hoạ độ cao)', {size: 11, fill: AN.gray});
+    s += aText(320, 236, 'Mỗi phân phối được làm mịn (không còn giá trị 0) rồi lấy log, sau đó mới cộng', {size: 12, fill: AN.gray});
     return s;
   }
 };
 
 const INSPECT_INFO = {
   embedding: {title: 'Lớp Embedding', steps: [
-    'Mỗi lượt đặt trong lịch sử được tra bảng để đổi thành một vector ẩn.',
-    '14 trường tìm kiếm (điểm đến, ngày, số khách…) được cộng lại thành một query vector.',
-    'Cả hai ghép thành một chuỗi vector để đưa vào mô hình.']},
-  tensor3d: {title: 'Tensor đầu vào', steps: [
-    'Chuỗi vector được xếp thành khối dữ liệu 4 chiều: batch, kênh, vị trí chuỗi, đơn vị ẩn.',
-    'Bước này chỉ sắp xếp lại dữ liệu cho các khối trộn bên dưới, chưa tính toán gì.']},
+    'Mỗi lượt đặt trong lịch sử (tối đa 20 lượt gần nhất) được tra bảng để đổi từ cluster thành một vector; thiếu lượt thì đệm 0.',
+    '14 trường tìm kiếm (điểm đến, ngày, số khách…), mỗi trường tra bảng riêng, cộng với một vector mask thành query vector.',
+    'Query được thêm vào cuối chuỗi, tạo thành bảng 21 hàng (20 lịch sử + 1 query).']},
+  tensor3d: {title: 'Bảng embedding 3 chiều', steps: [
+    'Theo bài báo, dữ liệu là bảng 3 chiều: vị trí chuỗi (S) × đặc trưng (F) × kênh (C).',
+    'Demo chỉ dùng 1 đặc trưng (ID cluster) nên F = 1. Bước này chỉ sắp xếp dữ liệu, chưa tính toán gì.']},
   layernorm: {title: 'Layer Norm', steps: [
-    'Các giá trị ẩn có thang đo lệch nhau, chỗ quá lớn, chỗ quá nhỏ.',
-    'Layer Norm kéo chúng về cùng một thang đo để các khối sau học ổn định.']},
+    'Với mỗi vị trí, các giá trị theo chiều kênh được kéo về cùng một thang đo.',
+    'SMLP4Rec chỉ chuẩn hóa theo chiều kênh và chỉ một lần, trước khi chia thành 3 nhánh (khác MLP4Rec chuẩn hóa ở mỗi nhánh).']},
   seq_mix: {title: 'Sequence Mixing', steps: [
-    'Với mỗi đơn vị ẩn, các vị trí trong chuỗi (lượt đặt cũ, lượt gần nhất và query) trao đổi thông tin qua lại.',
-    'Nhờ vậy mô hình biết query hiện tại liên quan nhất tới lượt đặt nào trong quá khứ.']},
+    'Nhánh này nhìn theo chiều vị trí: với mỗi kênh, cả chuỗi (lịch sử + query) đi qua một MLP hai lớp (n → 3n → n, có GELU).',
+    'Nhờ vậy mỗi vị trí nhận được thông tin từ các vị trí khác, tức là quan hệ theo thứ tự thời gian.']},
   feat_mix: {title: 'Feature Mixing', steps: [
-    'Mỗi giá trị được biến đổi riêng lẻ: mở ra thành 3 rồi gộp lại thành 1.',
-    'Không có trao đổi giữa các ô vì đặc trưng ở đây chỉ có một chiều (cluster ID).']},
+    'Nhánh này nhìn theo chiều đặc trưng để học quan hệ giữa các đặc trưng của một item.',
+    'Vì demo chỉ có 1 đặc trưng nên MLP chỉ là 1 → 3 → 1 áp lên từng ô riêng lẻ, hầu như không trộn thông tin.']},
   chan_mix: {title: 'Channel Mixing', steps: [
-    'Các đơn vị ẩn của cùng một vị trí được trộn lẫn với nhau.',
-    'Qua đó tạo ra các đặc trưng trừu tượng hơn từ biểu diễn ẩn ban đầu.']},
+    'Nhánh này nhìn theo chiều kênh: với mỗi vị trí, toàn bộ các kênh của vector đi qua một MLP hai lớp (C → 3C → C).',
+    'Học quan hệ giữa các chiều ẩn bên trong cùng một vector.']},
   merge: {title: 'Hợp nhất & lặp 2 tầng', steps: [
-    'Kết quả của ba nhánh trộn được cộng lại với nhau.',
-    'Toàn bộ khối Mixer được áp dụng thêm một lần nữa lên kết quả này.']},
+    'Ba nhánh chạy song song trên cùng một đầu vào (không nối tiếp nhau như MLP4Rec) rồi được cộng lại.',
+    'Cả khối chạy thêm một lần nữa trên kết quả này, dùng chung trọng số với lần đầu.']},
   output: {title: 'Lớp đầu ra', steps: [
-    'Chỉ đọc biểu diễn tại vị trí query, nơi đã tổng hợp thông tin của cả lịch sử.',
-    'Chuẩn hóa rồi so khớp với bảng embedding của 100 cluster để ra điểm cho từng cluster, sau đó đổi thành xác suất.']},
+    'Chỉ lấy hàng cuối cùng (vị trí query), nơi đã gom thông tin của cả lịch sử.',
+    'Chuẩn hóa, rồi lấy tích vô hướng với embedding của từng cluster để ra điểm; softmax đổi điểm thành xác suất mô hình.']},
   samedest: {title: 'Thành phần sameDest', steps: [
     'Tìm các lượt đặt trong lịch sử có cùng điểm đến với query hiện tại.',
-    'Lượt càng gần đây càng có trọng số lớn; cộng dồn thành phân phối trên các cluster.',
-    'Nếu điểm đến chưa từng xuất hiện, thành phần này không đóng góp.']},
+    'Mỗi lượt đóng góp cho cluster của nó, lượt càng cũ càng bị giảm trọng số; cuối cùng chia cho tổng để thành phân phối.',
+    'Nếu điểm đến chưa từng xuất hiện, phân phối là đều nên không làm đổi thứ hạng.']},
   fusion: {title: 'Dung hợp điểm', steps: [
-    'Điểm của mô hình và điểm sameDest (nhân trọng số w) được cộng ở thang log.',
+    'Xác suất của mô hình và của sameDest đều được làm mịn rồi lấy log.',
+    'Điểm sameDest nhân trọng số w rồi cộng với điểm mô hình.',
     'Sắp xếp theo điểm hợp nhất và lấy Top 5 cluster để gợi ý.']}
 };
 
@@ -2197,10 +2219,10 @@ function inspectLayer(layerKey) {
   $('inspectModalTitle').textContent = info.title;
   $('inspectModalBadge').textContent = layerKey.toUpperCase();
 
-  let bodyHtml = `<div class="inspect-stage"><svg class="anim-svg" viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hoạt ảnh minh hoạ: ${info.title}">${ANIM[layerKey](act)}</svg></div>`;
+  let bodyHtml = `<div class="inspect-stage"><svg class="anim-svg" viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hoạt ảnh minh hoạ: ${info.title}">${ANIM[layerKey]()}</svg></div>`;
   bodyHtml += `<ol class="inspect-steps">${info.steps.map(t => `<li>${t}</li>`).join('')}</ol>`;
   if (layerKey === 'samedest' && act) {
-    bodyHtml += `<div class="inspect-note ${act.active ? 'on' : 'off'}">${act.active ? 'Lần chạy này: điểm đến đã có trong lịch sử, sameDest được kích hoạt.' : 'Lần chạy này: điểm đến mới, sameDest không đóng góp.'}</div>`;
+    bodyHtml += `<div class="inspect-note ${act.active ? 'on' : 'off'}">${act.active ? 'Lần chạy này: điểm đến đã có trong lịch sử, sameDest được kích hoạt.' : 'Lần chạy này: điểm đến mới, sameDest là phân phối đều và không làm đổi thứ hạng.'}</div>`;
   }
 
   $('inspectModalBody').innerHTML = bodyHtml;
