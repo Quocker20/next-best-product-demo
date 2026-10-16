@@ -1975,43 +1975,70 @@ const aBars = (x, base, heights, colors, w, gap, delayStep = 0.12) =>
   heights.map((h, i) => h <= 0 ? '' :
     `<rect class="grow" style="--d:${(i * delayStep).toFixed(2)}s" x="${x + i * (w + gap)}" y="${base - h}" width="${w}" height="${h}" rx="2" fill="${Array.isArray(colors) ? colors[i] : colors}"/>`).join('');
 
-// Bảng (vị trí × kênh) bên trái; `scan(r, c)` trả về độ trễ để tô sáng lát cắt đang được MLP xử lý, hoặc null.
-function aTable(rows, cols, hl) {
-  const x0 = 40, y0 = 62, cw = 22, ch = 15, g = 4;
-  let s = '';
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    s += `<rect x="${x0 + c * (cw + g)}" y="${y0 + r * (ch + g)}" width="${cw}" height="${ch}" rx="2.5" fill="${AN.blue}" fill-opacity="0.28"/>`;
-  }
-  const W = cols * (cw + g) - g, H = rows * (ch + g) - g;
-  s += aText(x0 + W / 2, 40, 'kênh (C) →', {size: 12, fill: AN.gray}) +
-       `<g transform="rotate(-90 ${x0 - 14} ${y0 + H / 2})">${aText(x0 - 14, y0 + H / 2 + 4, 'vị trí (S) →', {size: 12, fill: AN.gray})}</g>`;
-  s += hl(x0, y0, cw, ch, g, W, H);
-  return s;
-}
-// MLP hai lớp: n vào → 3n ẩn → n ra
-function aMlp(nIn, nHid, nOut, color, label) {
-  const xs = [380, 490, 595], y0 = 62, y1 = 190;
-  const ys = n => Array.from({length: n}, (_, i) => n === 1 ? (y0 + y1) / 2 : y0 + i * (y1 - y0) / (n - 1));
-  const P = [ys(nIn), ys(nHid), ys(nOut)];
-  let s = '';
-  [[0, 1], [1, 2]].forEach(([a, b]) => P[a].forEach(ya => P[b].forEach(yb => {
-    s += `<line x1="${xs[a]}" y1="${ya}" x2="${xs[b]}" y2="${yb}" stroke="${AN.gray}" stroke-width="0.8" opacity="0.28"/>`;
-  })));
-  [[0, 1], [1, 2]].forEach(([a, b], k) => {
-    for (let n = 0; n < 3; n++) {
-      const i = Math.floor(aRand(k * 7 + n) * P[a].length), j = Math.floor(aRand(k * 7 + n + 3) * P[b].length);
-      s += `<line class="flow" style="animation-delay:${n * 0.2}s" x1="${xs[a]}" y1="${P[a][i]}" x2="${xs[b]}" y2="${P[b][j]}" stroke="${color}" stroke-width="1.8"/>`;
-    }
-  });
-  P.forEach((col, ci) => col.forEach((y, k) => {
-    s += `<circle class="cell" style="--d:${(ci * 0.5 + k * 0.05).toFixed(2)}s" cx="${xs[ci]}" cy="${y}" r="${col.length > 6 ? 4.5 : 8}" fill="${ci === 1 ? AN.gray : color}"/>`;
-  }));
-  s += aText(xs[0], 44, 'vào', {size: 12, fill: AN.gray}) + aText(xs[1], 44, 'ẩn (gấp 3 lần) + GELU', {size: 12, fill: AN.gray}) + aText(xs[2], 44, 'ra', {size: 12, fill: AN.gray});
-  s += aText(320, 236, label, {size: 12, fill: AN.gray});
-  return s;
-}
 const aScanRect = (x, y, w, h, d, color) =>
   `<rect class="scan" style="--d:${d.toFixed(2)}s" x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="4" fill="${color}" fill-opacity="0.25" stroke="${color}" stroke-width="2"/>`;
+
+// Ba nhánh mixing là cùng một khuôn: y = W2 · GELU(W1 · x), áp lên một "lát cắt" của bảng.
+// Khác attention: W1, W2 là ma trận học sẵn, cố định, không phụ thuộc nội dung đầu vào.
+function aSlice(kind) {
+  const rows = 7, cols = 8, x0 = 20, y0 = 64, cw = 12, ch = 8, g = 2;
+  let s = aText(x0 + 55, 44, 'bảng (vị trí × kênh)', {size: 11, fill: AN.gray});
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const on = kind === 'seq' ? c === 3 : kind === 'chan' ? r === 3 : (r === 3 && c === 3);
+    s += `<rect x="${x0 + c * (cw + g)}" y="${y0 + r * (ch + g)}" width="${cw}" height="${ch}" rx="1.5" fill="${on ? AN.orange : AN.blue}" fill-opacity="${on ? 1 : 0.25}"/>`;
+  }
+  const lab = kind === 'seq' ? 'lát cắt: mọi vị trí của 1 kênh' : kind === 'chan' ? 'lát cắt: mọi kênh của 1 vị trí' : 'lát cắt: 1 ô (F = 1)';
+  return s + aText(x0 + 55, 150, lab, {size: 11, fill: AN.orange, weight: 700});
+}
+// ma trận trọng số dạng bản đồ nhiệt (giá trị minh hoạ, cố định)
+function aMatrix(x, y, w, h, rows, cols, seed) {
+  let s = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const v = aRand(seed + r * 31 + c * 7) * 2 - 1;
+    s += `<rect x="${(x + c * w / cols).toFixed(1)}" y="${(y + r * h / rows).toFixed(1)}" width="${(w / cols).toFixed(1)}" height="${(h / rows).toFixed(1)}" fill="${v >= 0 ? AN.blue : AN.orange}" fill-opacity="${(0.15 + Math.abs(v) * 0.7).toFixed(2)}"/>`;
+  }
+  return s + `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${AN.gray}" stroke-width="1.2"/>`;
+}
+function aColumn(x, y, w, h, n, color, delayOf) {
+  let s = '';
+  for (let k = 0; k < n; k++) {
+    s += `<rect class="cell" style="--d:${delayOf(k).toFixed(2)}s" x="${x}" y="${(y + k * h / n).toFixed(1)}" width="${w}" height="${(h / n - 1).toFixed(1)}" rx="1.5" fill="${color}"/>`;
+  }
+  return s + `<rect x="${x - 1}" y="${y - 1}" width="${w + 2}" height="${h + 1}" fill="none" stroke="${color}" stroke-width="1"/>`;
+}
+function aMixer(kind, nIn, captions) {
+  const m = nIn * 3, cy = 116, Hn = nIn === 1 ? 36 : 108, y0 = cy - Hn / 2;
+  const w1 = nIn === 1 ? 24 : 60, w2 = nIn === 1 ? 36 : 96, cyc = 3.2;
+  const xv = 180, xw1 = nIn === 1 ? 248 : 224, xh = 300, xg = 326, xw2 = 384, xo = 508;
+  let s = aSlice(kind) + aArrow(138, 100, 172, 100, AN.orange);
+  // vector vào
+  s += aColumn(xv, y0, 12, Hn, nIn, AN.orange, k => k * 0.1);
+  s += aText(xv + 6, y0 + Hn + 16, 'đầu vào', {size: 11, fill: AN.gray}) + aText(xv + 6, y0 + Hn + 29, `(${nIn === 1 ? '1 giá trị' : 'n ' + (kind === 'seq' ? 'vị trí' : 'kênh')})`, {size: 11, fill: AN.gray});
+  s += aText(xv + 28, cy + 4, '×', {size: 16, fill: AN.ink, weight: 700});
+  // W1 + quét từng hàng
+  s += aMatrix(xw1, y0, w1, Hn, m, nIn, 3);
+  for (let k = 0; k < m; k++) s += aScanRect(xw1, y0 + k * Hn / m, w1, Hn / m, k * cyc / m, AN.orange);
+  s += aText(xw1 + w1 / 2, y0 + Hn + 16, 'ma trận W1', {size: 11, fill: AN.gray}) + aText(xw1 + w1 / 2, y0 + Hn + 29, '(cố định)', {size: 11, fill: AN.gray});
+  s += aText(xh - 12, cy + 4, '=', {size: 16, fill: AN.ink, weight: 700});
+  // vector ẩn (ba lần dài hơn)
+  s += aColumn(xh, y0, 12, Hn, m, AN.gray, k => k * cyc / m * 0.5);
+  for (let k = 0; k < m; k++) s += aScanRect(xh, y0 + k * Hn / m, 12, Hn / m, k * cyc / m, AN.orange);
+  s += aText(xh + 6, y0 + Hn + 16, nIn === 1 ? 'ẩn (3 giá trị)' : 'ẩn (3n)', {size: 11, fill: AN.gray});
+  // GELU
+  s += `<polyline points="${xg},${cy + 6} ${xg + 8},${cy + 5} ${xg + 14},${cy + 1} ${xg + 20},${cy - 6} ${xg + 32},${cy - 20}" fill="none" stroke="${AN.ink}" stroke-width="1.8"/>` +
+       `<line x1="${xg - 2}" y1="${cy + 6}" x2="${xg + 34}" y2="${cy + 6}" stroke="${AN.gray}" stroke-width="0.8"/>` + aText(xg + 16, cy - 30, 'GELU', {size: 11, weight: 700});
+  s += aText(xw2 - 12, cy + 4, '×', {size: 16, fill: AN.ink, weight: 700});
+  // W2 + quét từng hàng
+  s += aMatrix(xw2, y0, w2, Hn, nIn, m, 11);
+  for (let k = 0; k < nIn; k++) s += aScanRect(xw2, y0 + k * Hn / nIn, w2, Hn / nIn, 1.6 + k * cyc / nIn, AN.green);
+  s += aText(xw2 + w2 / 2, y0 + Hn + 16, 'ma trận W2', {size: 11, fill: AN.gray}) + aText(xw2 + w2 / 2, y0 + Hn + 29, '(cố định)', {size: 11, fill: AN.gray});
+  s += aText(xo - 12, cy + 4, '=', {size: 16, fill: AN.ink, weight: 700});
+  s += aColumn(xo, y0, 12, Hn, nIn, AN.green, k => 1.6 + k * cyc / nIn * 0.5);
+  s += aText(xo + 6, y0 + Hn + 16, 'đầu ra', {size: 11, fill: AN.gray}) + aText(xo + 6, y0 + Hn + 29, '(cùng độ dài)', {size: 11, fill: AN.gray});
+  s += aText(580, 100, 'xanh: +', {size: 11, fill: AN.blue}) + aText(580, 114, 'cam: −', {size: 11, fill: AN.orange}) + aText(580, 128, 'trọng số', {size: 11, fill: AN.gray});
+  s += aText(320, 222, captions[0], {size: 12, fill: AN.ink, weight: 600}) + aText(320, 240, captions[1], {size: 12, fill: AN.gray});
+  return s;
+}
 
 const ANIM = {
   embedding() {
@@ -2073,33 +2100,18 @@ const ANIM = {
   },
 
   seq_mix() {
-    const rows = 7, cols = 8;
-    const left = aTable(rows, cols, (x0, y0, cw, ch, g, W, H) => {
-      let s = '';
-      for (let c = 0; c < cols; c++) s += aScanRect(x0 + c * (cw + g), y0, cw, H, c * 0.4, AN.orange);
-      return s;
-    });
-    return left + aArrow(285, 120, 345, 120, AN.orange) + aMlp(4, 12, 4, AN.orange, 'cả chuỗi vị trí của MỘT kênh đi qua MLP, mọi kênh dùng chung trọng số');
+    return aMixer('seq', 6, ['Mỗi vị trí mới = tổng có trọng số của TẤT CẢ vị trí (lịch sử và query)',
+      'Trọng số cố định sau huấn luyện, không đổi theo dữ liệu (khác attention); mọi kênh dùng chung']);
   },
 
   feat_mix() {
-    const rows = 7, cols = 8;
-    const left = aTable(rows, cols, (x0, y0, cw, ch, g) => {
-      let s = '';
-      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) s += aScanRect(x0 + c * (cw + g), y0 + r * (ch + g), cw, ch, aRand(r * cols + c) * 3.2, AN.orange);
-      return s;
-    });
-    return left + aArrow(285, 120, 345, 120, AN.orange) + aMlp(1, 3, 1, AN.orange, 'chỉ có 1 đặc trưng (F = 1): từng ô tự đi qua MLP 1 → 3 → 1, không trộn với ô khác');
+    return aMixer('feat', 1, ['Chỉ có 1 giá trị vào: nhân 3 trọng số, qua GELU, rồi gộp lại thành 1',
+      'F = 1 nên không có gì để trộn giữa các đặc trưng; mỗi ô tự biến đổi riêng']);
   },
 
   chan_mix() {
-    const rows = 7, cols = 8;
-    const left = aTable(rows, cols, (x0, y0, cw, ch, g, W) => {
-      let s = '';
-      for (let r = 0; r < rows; r++) s += aScanRect(x0, y0 + r * (ch + g), W, ch, r * (3.2 / rows), AN.orange);
-      return s;
-    });
-    return left + aArrow(285, 120, 345, 120, AN.orange) + aMlp(4, 12, 4, AN.orange, 'tất cả kênh của MỘT vị trí đi qua MLP (C → 3C → C), mọi vị trí dùng chung trọng số');
+    return aMixer('chan', 6, ['Mỗi kênh mới = tổng có trọng số của TẤT CẢ kênh trong cùng một vị trí',
+      'Trọng số cố định sau huấn luyện, không đổi theo dữ liệu (khác attention); mọi vị trí dùng chung']);
   },
 
   merge() {
@@ -2187,14 +2199,14 @@ const INSPECT_INFO = {
     'Với mỗi vị trí, các giá trị theo chiều kênh được kéo về cùng một thang đo.',
     'SMLP4Rec chỉ chuẩn hóa theo chiều kênh và chỉ một lần, trước khi chia thành 3 nhánh (khác MLP4Rec chuẩn hóa ở mỗi nhánh).']},
   seq_mix: {title: 'Sequence Mixing', steps: [
-    'Nhánh này nhìn theo chiều vị trí: với mỗi kênh, cả chuỗi (lịch sử + query) đi qua một MLP hai lớp (n → 3n → n, có GELU).',
-    'Nhờ vậy mỗi vị trí nhận được thông tin từ các vị trí khác, tức là quan hệ theo thứ tự thời gian.']},
+    'Lấy vector gồm giá trị của TẤT CẢ vị trí (lịch sử và query) ở một kênh, nhân với ma trận W1 (mở rộng gấp 3), qua GELU, rồi nhân ma trận W2 (thu về độ dài cũ).',
+    'Mỗi vị trí mới là tổ hợp có trọng số của mọi vị trí. Trọng số nằm trong W1, W2: học sẵn, cố định, không phụ thuộc nội dung đầu vào (khác attention), và dùng chung cho mọi kênh.']},
   feat_mix: {title: 'Feature Mixing', steps: [
-    'Nhánh này nhìn theo chiều đặc trưng để học quan hệ giữa các đặc trưng của một item.',
-    'Vì demo chỉ có 1 đặc trưng nên MLP chỉ là 1 → 3 → 1 áp lên từng ô riêng lẻ, hầu như không trộn thông tin.']},
+    'Nhánh này trộn theo chiều đặc trưng (F). Demo chỉ có 1 đặc trưng (ID cluster) nên vector vào chỉ dài 1.',
+    'Mỗi ô đi qua MLP 1 → 3 → 1: nhân 3 trọng số, qua GELU, gộp lại. Không có thông tin nào được trộn giữa các ô.']},
   chan_mix: {title: 'Channel Mixing', steps: [
-    'Nhánh này nhìn theo chiều kênh: với mỗi vị trí, toàn bộ các kênh của vector đi qua một MLP hai lớp (C → 3C → C).',
-    'Học quan hệ giữa các chiều ẩn bên trong cùng một vector.']},
+    'Lấy vector gồm TẤT CẢ các kênh của một vị trí, nhân với ma trận W1 (mở rộng gấp 3), qua GELU, rồi nhân ma trận W2 (thu về độ dài cũ).',
+    'Mỗi kênh mới là tổ hợp có trọng số của mọi kênh trong cùng vị trí. Trọng số học sẵn, cố định, dùng chung cho mọi vị trí.']},
   merge: {title: 'Hợp nhất & lặp 2 tầng', steps: [
     'Ba nhánh chạy song song trên cùng một đầu vào (không nối tiếp nhau như MLP4Rec) rồi được cộng lại.',
     'Cả khối chạy thêm một lần nữa trên kết quả này, dùng chung trọng số với lần đầu.']},
