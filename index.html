@@ -2040,6 +2040,43 @@ function aMixer(kind, nIn, captions) {
   return s;
 }
 
+// Khối ô 3D như hình trong bài báo: ba nhánh mixing cộng lại thành một "chữ thập 3D" đi qua một ô nằm bên trong khối.
+const AX = {v: '#4aa8e0', h: '#8db600', d: '#b8926a', mid: '#ea580c'};  // v: trục vị trí, h: trục kênh, d: trục đặc trưng
+function aCross(X0, Y0, c) {
+  const n = 5, m = 2, dx = c * 0.5, dy = c * 0.4, N = n * c;
+  const fx = (i, k) => X0 + i * c + k * dx, fy = (j, k) => Y0 + j * c - k * dy;
+  const ctr = (i, j, k) => [fx(i, k) + c / 2 + dx / 2, fy(j, k) + c / 2 - dy / 2];
+  let s = `<rect x="${X0 + n * dx}" y="${Y0 - n * dy}" width="${N}" height="${N}" fill="#f8fafc" stroke="${AN.gray}" stroke-width="1.2"/>`;
+  const cells = [];
+  for (let i = 0; i < n; i++) cells.push([i, m, m, i === m ? 'mid' : 'h']);
+  for (let j = 0; j < n; j++) if (j !== m) cells.push([m, j, m, 'v']);
+  for (let k = 0; k < n; k++) if (k !== m) cells.push([m, m, k, 'd']);
+  cells.sort((a, b) => b[2] - a[2] || b[1] - a[1] || a[0] - b[0]);
+  cells.forEach(([i, j, k, t], idx) => {
+    const x = fx(i, k), y = fy(j, k), col = AX[t];
+    const cls = `class="glow" style="animation-delay:${({h: 0, v: 0.5, d: 1, mid: 1.5})[t]}s"`;
+    s += `<g ${cls}><rect x="${x}" y="${y}" width="${c}" height="${c}" fill="${col}" stroke="#fff" stroke-width="1"/>` +
+         `<polygon points="${x},${y} ${x + c},${y} ${x + c + dx},${y - dy} ${x + dx},${y - dy}" fill="${col}" fill-opacity="0.7" stroke="#fff" stroke-width="1"/>` +
+         `<polygon points="${x + c},${y} ${x + c + dx},${y - dy} ${x + c + dx},${y - dy + c} ${x + c},${y + c}" fill="${col}" fill-opacity="0.5" stroke="#fff" stroke-width="1"/></g>`;
+  });
+  // vỏ khối nửa trong suốt nằm phía trước để thấy chữ thập bên trong
+  const sh = `fill="#fff" fill-opacity="0.28" stroke="${AN.gray}" stroke-width="1.2"`;
+  s += `<rect x="${X0}" y="${Y0}" width="${N}" height="${N}" ${sh}/>` +
+       `<polygon points="${X0},${Y0} ${X0 + N},${Y0} ${X0 + N + n * dx},${Y0 - n * dy} ${X0 + n * dx},${Y0 - n * dy}" ${sh}/>` +
+       `<polygon points="${X0 + N},${Y0} ${X0 + N + n * dx},${Y0 - n * dy} ${X0 + N + n * dx},${Y0 - n * dy + N} ${X0 + N},${Y0 + N}" ${sh}/>`;
+  for (let t = 1; t < n; t++) {
+    s += `<line x1="${X0 + t * c}" y1="${Y0}" x2="${X0 + t * c}" y2="${Y0 + N}" stroke="${AN.grayL}"/><line x1="${X0}" y1="${Y0 + t * c}" x2="${X0 + N}" y2="${Y0 + t * c}" stroke="${AN.grayL}"/>`;
+    s += `<line x1="${X0 + t * c}" y1="${Y0}" x2="${X0 + t * c + n * dx}" y2="${Y0 - n * dy}" stroke="${AN.grayL}"/><line x1="${X0 + t * dx}" y1="${Y0 - t * dy}" x2="${X0 + N + t * dx}" y2="${Y0 - t * dy}" stroke="${AN.grayL}"/>`;
+    s += `<line x1="${X0 + N}" y1="${Y0 + t * c}" x2="${X0 + N + n * dx}" y2="${Y0 + t * c - n * dy}" stroke="${AN.grayL}"/><line x1="${X0 + N + t * dx}" y1="${Y0 - t * dy}" x2="${X0 + N + t * dx}" y2="${Y0 + N - t * dy}" stroke="${AN.grayL}"/>`;
+  }
+  // hạt chạy dọc ba thanh vào ô giao
+  const mid = ctr(m, m, m);
+  [[ctr(0, m, m), AX.h, 0], [ctr(m, 0, m), AX.v, 0.4], [ctr(m, m, n - 1), AX.d, 0.8]].forEach(([from, col, d]) => {
+    s += aDot(`M ${from[0]} ${from[1]} L ${mid[0]} ${mid[1]}`, col, 1.8, d);
+  });
+  return {svg: s, mid, left: X0, right: X0 + N + n * dx, top: Y0 - n * dy, bottom: Y0 + N};
+}
+
 const ANIM = {
   embedding() {
     let s = aText(160, 12, 'Lịch sử đặt (tối đa 20 lượt)', {size: 12, fill: AN.blue, weight: 700}) +
@@ -2115,19 +2152,21 @@ const ANIM = {
   },
 
   merge() {
-    let s = aChip(14, 96, 80, 44, 'Đầu vào', '#fff', AN.ink);
-    s += aArrow(96, 118, 124, 118, AN.blue) +
-         `<rect x="126" y="70" width="190" height="96" rx="6" fill="#fff" stroke="${AN.ink}" stroke-width="1.4"/>` +
-         aText(221, 88, 'Khối Mixer', {size: 12, weight: 700});
-    ['Sequence', 'Feature', 'Channel'].forEach((l, i) => { s += aChip(138, 96 + i * 22, 166, 18, l + ' mixing', AN.blueL, AN.blue); });
-    s += aText(221, 186, '3 nhánh chạy song song trên cùng một đầu vào', {size: 11, fill: AN.gray});
-    s += aArrow(318, 118, 346, 118, AN.blue) + `<circle cx="362" cy="118" r="14" fill="#fff" stroke="${AN.ink}" stroke-width="1.6"/>` + aText(362, 125, '+', {size: 19, weight: 700});
-    s += aArrow(378, 118, 410, 118, AN.blue) + aChip(412, 96, 84, 44, 'Tầng 1', '#fff', AN.ink);
-    const loop = 'M 454 94 C 454 20 221 20 221 66';
-    s += `<path class="flow" d="${loop}" fill="none" stroke="${AN.orange}" stroke-width="2"/>` + aDot(loop, AN.orange, 2.6) +
-         aText(338, 22, 'lặp lần 2: cùng khối, cùng trọng số', {size: 12, fill: AN.orange, weight: 700});
-    s += aArrow(498, 118, 534, 118, AN.green) + aChip(536, 96, 88, 44, 'Tầng 2', AN.blueL, AN.blue) + aDot('M 498 118 L 536 118', AN.green, 1.4);
-    s += aText(320, 222, 'Ba nhánh được cộng lại (không cộng thêm đầu vào), rồi lặp lại một lần nữa', {size: 12, fill: AN.gray});
+    const cube = aCross(210, 96, 20);
+    let s = cube.svg;
+    const chips = [['Sequence mixing', AX.v, 66], ['Feature mixing', AX.d, 110], ['Channel mixing', AX.h, 154]];
+    chips.forEach(([l, col, y]) => {
+      s += `<rect x="14" y="${y - 15}" width="132" height="30" rx="5" fill="#fff" stroke="${col}" stroke-width="2"/>` + aText(80, y + 4, l, {size: 12, weight: 700}) +
+           aArrow(148, y, 200, 124, col);
+    });
+    s += aText(80, 192, 'mỗi nhánh được chuyển vị về dạng cũ', {size: 11, fill: AN.gray});
+    s += aText(cube.right + 14, cube.mid[1] - 20, 'ô giao', {size: 12, weight: 700, fill: AX.mid, anchor: 'start'}) +
+         `<line x1="${cube.right + 12}" y1="${cube.mid[1] - 24}" x2="${cube.mid[0] + 8}" y2="${cube.mid[1] - 4}" stroke="${AX.mid}" stroke-width="1.4"/>`;
+    s += aArrow(cube.right + 14, 150, 504, 150, AN.blue) +
+         `<rect x="506" y="116" width="116" height="68" rx="6" fill="${AN.blueL}" stroke="${AN.blue}" stroke-width="1.6" stroke-dasharray="5 3"/>` +
+         aText(564, 144, 'Lặp lại cả khối', {size: 12, weight: 700}) + aText(564, 162, '(tầng 2, cùng', {size: 11}) + aText(564, 176, 'trọng số)', {size: 11});
+    s += aText(320, 226, 'Ba thanh (vị trí, đặc trưng, kênh) cộng lại thành chữ thập 3D tại từng ô của khối', {size: 12, fill: AN.ink, weight: 600}) +
+         aText(320, 243, 'Không cộng thêm đầu vào; kết quả là đầu vào của lần lặp thứ hai', {size: 12, fill: AN.gray});
     return s;
   },
 
@@ -2208,8 +2247,9 @@ const INSPECT_INFO = {
     'Lấy vector gồm TẤT CẢ các kênh của một vị trí, nhân với ma trận W1 (mở rộng gấp 3), qua GELU, rồi nhân ma trận W2 (thu về độ dài cũ).',
     'Mỗi kênh mới là tổ hợp có trọng số của mọi kênh trong cùng vị trí. Trọng số học sẵn, cố định, dùng chung cho mọi vị trí.']},
   merge: {title: 'Hợp nhất & lặp 2 tầng', steps: [
-    'Ba nhánh chạy song song trên cùng một đầu vào (không nối tiếp nhau như MLP4Rec) rồi được cộng lại.',
-    'Cả khối chạy thêm một lần nữa trên kết quả này, dùng chung trọng số với lần đầu.']},
+    'Ba nhánh chạy song song trên cùng một đầu vào. Mỗi nhánh xử lý một trục của bảng 3D: vị trí (xanh dương), kênh (xanh lá), đặc trưng (nâu).',
+    'Kết quả của từng nhánh được chuyển vị về cùng dạng rồi cộng từng phần tử, nên ba trục cắt nhau thành một khối duy nhất.',
+    'Cả khối Mixer chạy thêm một lần nữa trên kết quả này, dùng chung trọng số với lần đầu.']},
   output: {title: 'Lớp đầu ra', steps: [
     'Chỉ lấy hàng cuối cùng (vị trí query), nơi đã gom thông tin của cả lịch sử.',
     'Chuẩn hóa, rồi lấy tích vô hướng với embedding của từng cluster để ra điểm; softmax đổi điểm thành xác suất mô hình.']},
